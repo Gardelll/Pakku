@@ -20,6 +20,15 @@
 - Fixed issue with optional export rule chaining. (File Director support was not working because of this.)
 - Added bunch of tests.
 
+## v1.3.4-hmcl
+
+### Added
+
+- Added HMCL modpack export format support.
+  - Use `pakku export --hmcl-modpack` to export modpacks in HMCL format.
+  - HMCL exports generate a `server-manifest.json` manifest compatible with the HMCL launcher.
+  - Added `hmcl_file_api` configuration option in `pakku.json` to specify the file server URL for HMCL modpack downloads.
+
 ## v1.3.3
 
 - Fixed exporting Modrinth project files to Modrinth manifest with different project ids than the actual project id.

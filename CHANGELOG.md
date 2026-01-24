@@ -3,6 +3,17 @@
 
 ## Unreleased
 
+## v1.3.4-hmcl
+
+### Added
+
+- Added HMCL modpack export format support.
+  - Use `pakku export --hmcl-modpack` to export modpacks in HMCL format.
+  - HMCL exports generate a `server-manifest.json` manifest compatible with the HMCL launcher.
+  - Added `hmcl_file_api` configuration option in `pakku.json` to specify the file server URL for HMCL modpack downloads.
+
+## v1.3.4
+
 ### Added
 
 - Added `export_server_side_projects_to_client` configuration option to control how server-side mods are handled in client modpack exports

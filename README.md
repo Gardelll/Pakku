@@ -102,6 +102,30 @@ Contributions are very welcomed, from code to documentation improvements!
 
 Join our [Discord](https://discord.com/invite/dtAyqdzTMj) if you have any questions.
 
+## Fork Modifications
+
+This fork is based on [juraj-hrivnak/Pakku](https://github.com/juraj-hrivnak/Pakku) and includes the following modifications:
+
+### Added: HMCL Modpack Format Support
+
+Added support for exporting modpacks in [HMCL](https://github.com/HMCL-dev/HMCL) launcher format.
+
+**Usage:**
+```bash
+pakku export --hmcl-modpack
+```
+
+**Configuration** (`pakku.json`):
+```json
+{
+  "hmcl_file_api": "https://your-server.com/modpack/files/"
+}
+```
+
+---
+
+*Modified by Gardel, 2026-01-24*
+
 ## License
 
 Licensed under the EUPL-1.2-or-later

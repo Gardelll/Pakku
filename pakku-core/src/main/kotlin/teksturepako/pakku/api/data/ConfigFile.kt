@@ -68,7 +68,11 @@ data class ConfigFile(
      * - `false` (default): Server-side projects are excluded from client exports (correct filtering)
      */
     @SerialName("export_server_side_projects_to_client")
-    private var exportServerSideProjectsToClient: Boolean = false
+    private var exportServerSideProjectsToClient: Boolean = false,
+
+    /** The file API URL for HMCL modpack format. */
+    @SerialName("hmcl_file_api")
+    private var hmclFileApi: String = ""
 )
 {
     @Serializable
@@ -124,6 +128,15 @@ data class ConfigFile(
     }
 
     fun getExportServerSideProjectsToClient() = this.exportServerSideProjectsToClient
+
+    // -- HMCL MODPACK --
+
+    fun setHmclFileApi(value: String)
+    {
+        this.hmclFileApi = value
+    }
+
+    fun getHmclFileApi() = this.hmclFileApi
 
     // -- OVERRIDES --
 

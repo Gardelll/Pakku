@@ -17,7 +17,10 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.actions.errors.ErrorSeverity
+import teksturepako.pakku.api.actions.errors.IOExportingError
+import teksturepako.pakku.api.actions.export.export
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
+import teksturepako.pakku.api.actions.export.profiles.hmclModpackProfile
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.platforms.CurseForge
@@ -41,6 +44,10 @@ class Export : CliktCommand()
 
     private val noServer: Boolean by option("--no-server")
         .help("Export modpack without server content. Modrinth: exclude server-overrides and SERVER mods; ServerPack: skip export.")
+        .flag()
+
+    private val hmclModpack: Boolean by option("--hmcl-modpack")
+        .help("Export HMCL modpack format (.zip) with server-manifest.json for HMCL launcher.")
         .flag()
 
     override fun run(): Unit = runBlocking {
@@ -99,6 +106,26 @@ class Export : CliktCommand()
             },
             migratedLockFile, migratedConfig, platforms, noServer
         ).joinAll()
+
+        // Export HMCL modpack if requested
+        if (hmclModpack)
+        {
+            export(
+                profiles = listOf(hmclModpackProfile()),
+                onError = { profile, error ->
+                    if (showIOErrors || error !is IOExportingError)
+                    {
+                        terminal.pError(error, prepend = "[${profile.name} profile]")
+                    }
+                },
+                onSuccess = { profile, file, duration ->
+                    val fileSize = file.fileSize().toHumanReadableSize()
+
+                    terminal.pSuccess("[${profile.name} profile] exported to '$file' ($fileSize) in ${duration.shortForm()}")
+                },
+                migratedLockFile, migratedConfig, platforms, noServer
+            ).joinAll()
+        }
 
         progressBar.clear()
 

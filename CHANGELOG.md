@@ -20,6 +20,12 @@
 - Fixed issue with optional export rule chaining. (File Director support was not working because of this.)
 - Added bunch of tests.
 
+## v1.3.5-hmcl
+
+### Changed
+
+- Rebased onto upstream `main`, picking up the FlexVer update strategy, `insp` command, and the serverpack mod hash fix.
+
 ## v1.3.4-hmcl
 
 ### Added

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "teksturepako.pakku"
-version = "1.3.4-hmcl"
+version = "1.3.5-hmcl"
 
 tasks.register("printVersion") {
     notCompatibleWithConfigurationCache(/* reason = */ "Prints version to stdout for CI")

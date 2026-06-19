@@ -2,4 +2,4 @@
 
 package teksturepako.pakku
 
-const val VERSION = "1.3.5-hmcl"
+const val VERSION = "1.4.0-hmcl"

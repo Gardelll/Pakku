@@ -17,7 +17,6 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.actions.errors.ErrorSeverity
-import teksturepako.pakku.api.actions.errors.IOExportingError
 import teksturepako.pakku.api.actions.export.export
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
 import teksturepako.pakku.api.actions.export.profiles.hmclModpackProfile
@@ -113,10 +112,12 @@ class Export : CliktCommand()
             export(
                 profiles = listOf(hmclModpackProfile()),
                 onError = { profile, error ->
-                    if (showIOErrors || error !is IOExportingError)
-                    {
-                        terminal.pError(error, prepend = "[${profile.name} profile]")
+                    if (error.severity == ErrorSeverity.FATAL) {
+                        terminal.pError(error, prepend = "FATAL [${profile.name} profile]")
+                        fatal = true
                     }
+
+                    terminal.pError(error, prepend = "[${profile.name} profile]")
                 },
                 onSuccess = { profile, file, duration ->
                     val fileSize = file.fileSize().toHumanReadableSize()

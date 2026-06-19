@@ -12,6 +12,12 @@
 - Updated JGit.
 - Fixed typo in code: `filedierector` -> `filedirector` in PR #128
 
+## v1.4.0-hmcl
+
+### Changed
+
+- Rebased onto upstream `main` (v1.4.0), picking up the `sync` manual-override fix, fatal export exit codes, and the JGit bump.
+
 ## v1.4.0
 
 - Fixed bug which caused hash mismatches in `serverpack` exports of multiplatform modpacks.

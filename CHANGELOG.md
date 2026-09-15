@@ -27,6 +27,7 @@
 ### Fixed
 
 - Adapted HMCL modpack export to upstream export API changes.
+- HMCL modpack export now includes parent modpack projects, overrides, and manual overrides for forked modpacks.
 
 ## v1.5.0
 

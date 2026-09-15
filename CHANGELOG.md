@@ -3,6 +3,16 @@
 
 ## Unreleased
 
+## v1.5.0-hmcl
+
+### Changed
+
+- Rebased onto upstream `main` (v1.5.0 plus later unreleased changes), picking up the `pakku-core` + `pakku-cli` JVM module split, `pakku fork` support, graceful handling of missing CurseForge projects in Modrinth modpack imports, and hardened export path and hash checks.
+
+### Fixed
+
+- Adapted HMCL modpack export to upstream export API changes.
+
 ## v1.5.0
 
 - Fixed flaky tests blocking nixpkgs update.

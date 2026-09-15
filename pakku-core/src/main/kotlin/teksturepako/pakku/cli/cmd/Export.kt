@@ -201,7 +201,8 @@ class Export : CliktCommand()
 
                     terminal.pSuccess("[${profile.name} profile] exported to '$file' ($fileSize) in ${duration.shortForm()}")
                 },
-                migratedLockFile, migratedConfig, platforms, noServer
+                exportLockFile, migratedConfig, platforms, noServer,
+                parentOverrides = parentOverrides, manualOverrides = forkManualOverrides
             ).joinAll()
         }
 

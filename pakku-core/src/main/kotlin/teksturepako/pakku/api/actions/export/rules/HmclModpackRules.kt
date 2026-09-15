@@ -66,8 +66,9 @@ fun ExportRuleScope.hmclModpackRule(): ExportRule
 fun Finished.createHmclManifest(modpackModel: HmclModpackModel): RuleResult
 {
     val overridesPath = getPath(OverrideType.OVERRIDE.folderName)
+    val manifestPath = getPath(HmclModpackModel.MANIFEST)
 
-    return ruleResult("createHmclManifest", Packaging.FileAction {
+    return ruleResult("createHmclManifest", Packaging.FileAction(manifestPath) {
         val files = mutableListOf<HmclFile>()
 
         if (overridesPath.toFile().exists())
@@ -86,7 +87,6 @@ fun Finished.createHmclManifest(modpackModel: HmclModpackModel): RuleResult
         modpackModel.files.clear()
         modpackModel.files.addAll(files)
 
-        val manifestPath = getPath(HmclModpackModel.MANIFEST)
         manifestPath.parent?.toFile()?.mkdirs()
 
         val content = jsonEncodeDefaults.encodeToString(HmclModpackModel.serializer(), modpackModel)

@@ -161,7 +161,7 @@ sealed class RuleContext(
             val projectFile = project.getLatestFile(Provider.providers) ?: return error(NoFiles(project, lockFile))
 
             val result = onExport(
-                { deps.resolveContent(projectFile) },
+                { deps.resolveContent(projectFile, projectFile.getPath(project, configFile)) },
                 projectFile.fileName,
                 OverrideType.fromProject(project).folderName
             )
@@ -265,7 +265,7 @@ sealed class RuleContext(
                 ?: return error(NoFilesOn(project, provider))
 
             val result = onExport(
-                { deps.resolveContent(projectFile) },
+                { deps.resolveContent(projectFile, projectFile.getPath(project, configFile)) },
                 projectFile.fileName,
                 OverrideType.fromProject(project).folderName
             )
@@ -292,7 +292,7 @@ sealed class RuleContext(
                 ?: return error(NoFiles(project, lockFile))
 
             val result = onExport(
-                { deps.resolveContent(projectFile) },
+                { deps.resolveContent(projectFile, projectFile.getPath(project, configFile)) },
                 projectFile.fileName,
                 OverrideType.fromProject(project).folderName
             )

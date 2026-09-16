@@ -30,7 +30,7 @@ import kotlin.test.assertNotNull
 class CfModpackModelTest : PakkuTest()
 {
     private val exportDeps = mockk<ExportDeps> {
-        coEvery { resolveContent(any()) } returns Ok(byteArrayOf(0x50, 0x4B, 0x03, 0x04))
+        coEvery { resolveContent(any(), any()) } returns Ok(byteArrayOf(0x50, 0x4B, 0x03, 0x04))
     }
 
     private val modpackName = "CurseForgeProfileTestModpack"

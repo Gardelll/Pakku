@@ -2,6 +2,7 @@ package teksturepako.pakku.cli.cmd
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.core.terminal
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.int
@@ -15,6 +16,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.actions.errors.AlreadyExists
+import teksturepako.pakku.api.actions.errors.DownloadFailed
+import teksturepako.pakku.api.actions.errors.ErrorSeverity
+import teksturepako.pakku.api.actions.errors.HashMismatch
 import teksturepako.pakku.api.actions.fetch.DeletionActionType
 import teksturepako.pakku.api.actions.fetch.deleteOldFiles
 import teksturepako.pakku.api.actions.fetch.fetch
@@ -27,6 +31,7 @@ import teksturepako.pakku.api.overrides.readManualOverrides
 import teksturepako.pakku.api.platforms.Platform
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.cli.ui.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
@@ -36,10 +41,10 @@ class Fetch : CliktCommand()
     override fun help(context: Context) = "Download project files to your modpack folder"
 
     private val retryOpt: Int? by option("-r", "--retry", metavar = "<n>")
-        .help("Retries downloading when it fails, with optional number of times to retry (Defaults to 2)")
+        .help("Number of times to retry downloading when it fails (Defaults to 2; '--retry 0' disables retrying)")
         .int()
         .optionalValue(2)
-        .default(0)
+        .default(2)
 
     private val shelveFlag: Boolean by option("--shelve")
         .help("Moves unknown project files to a shelf instead of deleting them")
@@ -85,8 +90,19 @@ class Fetch : CliktCommand()
 
         launch { progressBar.execute() }
 
+        /** Files which failed to be fetched; a retry which succeeds removes its file again. */
+        val missingFiles: MutableSet<java.nio.file.Path> = ConcurrentHashMap.newKeySet()
+        var fatal = false
+
         val fetchJob = projectFiles.fetch(
             onError = { error ->
+                when
+                {
+                    error is DownloadFailed               -> error.path?.let { missingFiles.add(it) }
+                    error is HashMismatch                 -> error.path?.let { missingFiles.add(it) }
+                    error.severity == ErrorSeverity.FATAL -> fatal = true
+                }
+
                 if (error !is AlreadyExists) terminal.pError(error)
             },
             onProgress = { completed, total ->
@@ -96,6 +112,8 @@ class Fetch : CliktCommand()
                 }
             },
             onSuccess = { path, projectFile ->
+                missingFiles.remove(path)
+
                 val slug = projectFile.getParentProject(lockFile)?.getFullMsg()
 
                 terminal.pSuccess("$slug saved to $path")
@@ -153,5 +171,7 @@ class Fetch : CliktCommand()
         oldFilesJob.join()
 
         echo()
+
+        if (fatal || missingFiles.isNotEmpty()) throw ProgramResult(1)
     }
 }

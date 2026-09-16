@@ -2,6 +2,7 @@ package teksturepako.pakku.api
 
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 object PakkuApi
 {
@@ -11,6 +12,8 @@ object PakkuApi
         internal var gitHubAccessToken: String? = null,
         internal var userAgent: String? = null,
         internal var timeout: Duration = 3.minutes,
+        internal var connectTimeout: Duration = 30.seconds,
+        internal var requestTimeout: Duration? = null,
     )
     {
         /** Enables development mode for testing purposes. */
@@ -37,10 +40,32 @@ object PakkuApi
             this.userAgent = agent
         }
 
-        /** Sets the timeout duration for HTTP requests. */
+        /**
+         * Sets how long an HTTP request may stall.
+         *
+         * Large downloads are not limited by how long they take in total,
+         * only by how long they go without transferring data.
+         */
         fun withTimeout(timeout: Duration)
         {
             this.timeout = timeout
+        }
+
+        /** Sets how long establishing a connection may take. */
+        fun withConnectTimeout(timeout: Duration)
+        {
+            this.connectTimeout = timeout
+        }
+
+        /**
+         * Sets how long an entire HTTP request may take, including the transfer of its body.
+         *
+         * `null` (the default) does not limit the total duration,
+         * which lets slow downloads finish as long as they keep making progress.
+         */
+        fun withRequestTimeout(timeout: Duration?)
+        {
+            this.requestTimeout = timeout
         }
 
         internal fun verify()
@@ -85,9 +110,17 @@ object PakkuApi
     internal val userAgent: String?
         get() = configuration?.userAgent
 
-    /** The timeout duration for HTTP requests. */
+    /** How long an HTTP request may stall before it is cancelled. */
     internal val timeout: Duration
         get() = configuration?.timeout ?: 3.minutes
+
+    /** How long establishing a connection may take. */
+    internal val connectTimeout: Duration
+        get() = configuration?.connectTimeout ?: 30.seconds
+
+    /** How long an entire HTTP request may take, or `null` when it is not limited. */
+    internal val requestTimeout: Duration?
+        get() = configuration?.requestTimeout
 }
 
 /** Initializes Pakku with the provided configuration. */

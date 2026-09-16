@@ -165,12 +165,12 @@ class Export : CliktCommand()
                     terminal.promptForCurseForgeApiKey()?.onError { terminal.pError(it) }
                 }
 
-                if (error.severity == ErrorSeverity.FATAL) {
+                if (error.severity == ErrorSeverity.FATAL)
+                {
                     terminal.pError(error, prepend = "FATAL [${profile.name} profile]")
                     fatal = true
                 }
-
-                terminal.pError(error, prepend = "[${profile.name} profile]")
+                else terminal.pError(error, prepend = "[${profile.name} profile]")
             },
             onSuccess = { profile, file, duration ->
                 val fileSize = file.fileSize().toHumanReadableSize()

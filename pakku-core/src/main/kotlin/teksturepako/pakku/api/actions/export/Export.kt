@@ -121,15 +121,18 @@ suspend fun ExportProfile.export(
             .filterNotNull()
             .produceRuleResults(lockFile, configFile, this.name, overrides, noServer, deps, parentOverrides, manualOverrides)
 
+        var fatal = false
+
+        val reportError: suspend (ActionError) -> Unit = { error ->
+            if (error.severity == ErrorSeverity.FATAL) fatal = true
+            onError(this, error)
+        }
+
         val cachedPaths: List<Path> = results
-            .runEffects(retry) { error ->
-                onError(this, error)
-            }
+            .runEffects(retry, reportError)
             .awaitAll()
             .filterNotNull() + results
-                .runEffectsOnFinished { error ->
-                    onError(this, error)
-                }
+                .runEffectsOnFinished(reportError)
                 .awaitAll()
                 .filterNotNull()
 
@@ -144,6 +147,13 @@ suspend fun ExportProfile.export(
                 debug { println("[${this.name}] CleanUp $action") }
             }
         )
+
+        // An incomplete modpack must not be left behind under the name of a successful export.
+        if (fatal)
+        {
+            outputZipFile.tryOrNull { it.deleteIfExists() }
+            return@measureTimedValue null
+        }
 
         outputZipFile
             .tryToResult { it.createParentDirectories() }

@@ -90,18 +90,7 @@ class ExportContentTest : PakkuTest(debug = false)
 
     @Test
     fun `failed download keeps its cause`(): Unit = runBlocking {
-        val context = RuleContext.MissingProject(
-            project = Project(
-                type = ProjectType.MOD,
-                slug = mutableMapOf("test" to "test"),
-                name = mutableMapOf("test" to "Test"),
-                id = mutableMapOf("test" to "test"),
-                files = mutableSetOf(),
-            ),
-            lockFile = LockFile(),
-            configFile = ConfigFile(),
-            workingSubDir = "download-failure",
-        )
+        val context = exportContext("download-failure")
         val cause = ConnectionError(IOException("connection reset"))
         val errors = mutableListOf<ActionError>()
 
@@ -113,6 +102,39 @@ class ExportContentTest : PakkuTest(debug = false)
         assertEquals(cause, error.cause)
         assertTrue("connection reset" in error.rawMessage)
     }
+
+    @Test
+    fun `failed download is retried`(): Unit = runBlocking {
+        val context = exportContext("download-retry")
+        var attempts = 0
+        val errors = mutableListOf<ActionError>()
+
+        val paths = listOf(context.createFile(
+            bytesCallback = {
+                attempts++
+                if (attempts <= 2) Err(ConnectionError(IOException("connection reset"))) else Ok(content)
+            },
+            path = "mods",
+            subpath = arrayOf("retried.jar"),
+        )).runEffects(retry = 2) { errors += it }.awaitAll()
+
+        assertEquals(3, attempts)
+        assertEquals(listOf(context.getPath("mods", "retried.jar")), paths)
+        assertTrue(errors.isEmpty())
+    }
+
+    private fun exportContext(subdir: String) = RuleContext.MissingProject(
+        project = Project(
+            type = ProjectType.MOD,
+            slug = mutableMapOf("test" to "test"),
+            name = mutableMapOf("test" to "Test"),
+            id = mutableMapOf("test" to "test"),
+            files = mutableSetOf(),
+        ),
+        lockFile = LockFile(),
+        configFile = ConfigFile(),
+        workingSubDir = subdir,
+    )
 
     private fun localFile(fileName: String, bytes: ByteArray): Path = testPath("mods", fileName).also {
         it.createParentDirectories()

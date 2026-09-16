@@ -4,10 +4,13 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.core.terminal
+import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.deprecated
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.optionalValue
+import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.widgets.Spinner
 import com.github.ajalt.mordant.widgets.progress.progressBarLayout
@@ -49,6 +52,12 @@ class Export : CliktCommand()
     private val noServer: Boolean by option("--no-server")
         .help("Export modpack without server content. Modrinth: exclude server-overrides and SERVER mods; ServerPack: skip export.")
         .flag()
+
+    private val retryOpt: Int by option("-r", "--retry", metavar = "<n>")
+        .help("Retries downloading when it fails, with optional number of times to retry (Defaults to 2)")
+        .int()
+        .optionalValue(2)
+        .default(0)
 
     override fun run(): Unit = runBlocking {
         val lockFile = LockFile.readToResult().getOrElse {
@@ -169,7 +178,7 @@ class Export : CliktCommand()
                 terminal.pSuccess("[${profile.name} profile] exported to '$file' ($fileSize) in ${duration.shortForm()}")
             },
             exportLockFile, migratedConfig, platforms, noServer,
-            parentOverrides = parentOverrides, manualOverrides = forkManualOverrides
+            parentOverrides = parentOverrides, manualOverrides = forkManualOverrides, retry = retryOpt
         ).joinAll()
 
         progressBar.clear()

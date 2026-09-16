@@ -11,6 +11,9 @@ import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import teksturepako.pakku.api.PakkuApi
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakku.api.actions.errors.ProjNotFound
@@ -59,6 +62,9 @@ suspend inline fun <reified T> tryRequest(block: () -> HttpResponse): Result<T, 
     }
 }
 
+/** Bounds how many files are downloaded at once, because each one is held in memory as a whole. */
+private val downloadSemaphore by lazy { Semaphore(PakkuApi.maxConcurrentDownloads) }
+
 /**
  * @return A body [ByteArray] of an HTTP(S) request, or an error if the status code is not OK.
  * A missing file is reported as [FileNotFound].
@@ -69,9 +75,11 @@ suspend inline fun <reified T> tryRequest(block: () -> HttpResponse): Result<T, 
 suspend fun requestByteArray(
     url: String,
     onDownload: suspend (bytesSentTotal: Long, contentLength: Long?) -> Unit = { _: Long, _: Long? -> }
-): Result<ByteArray, ActionError> = tryRequest<ByteArray> {
-    pakkuClient.get(url) {
-        onDownload { bytesSentTotal, contentLength -> onDownload(bytesSentTotal, contentLength) }
+): Result<ByteArray, ActionError> = downloadSemaphore.withPermit {
+    tryRequest<ByteArray> {
+        pakkuClient.get(url) {
+            onDownload { bytesSentTotal, contentLength -> onDownload(bytesSentTotal, contentLength) }
+        }
     }
 }.mapError { error -> if (error is ProjNotFound) FileNotFound(url) else error }
 

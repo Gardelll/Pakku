@@ -14,6 +14,7 @@ object PakkuApi
         internal var timeout: Duration = 3.minutes,
         internal var connectTimeout: Duration = 30.seconds,
         internal var requestTimeout: Duration? = null,
+        internal var maxConcurrentDownloads: Int = DEFAULT_MAX_CONCURRENT_DOWNLOADS,
     )
     {
         /** Enables development mode for testing purposes. */
@@ -68,6 +69,17 @@ object PakkuApi
             this.requestTimeout = timeout
         }
 
+        /**
+         * Sets how many files may be downloaded at the same time.
+         *
+         * Downloaded files are held in memory, so this bounds how much
+         * memory downloading a modpack can take.
+         */
+        fun withMaxConcurrentDownloads(count: Int)
+        {
+            this.maxConcurrentDownloads = count.coerceAtLeast(1)
+        }
+
         internal fun verify()
         {
             if (configuration?.developmentMode == true)
@@ -80,6 +92,8 @@ object PakkuApi
             }
         }
     }
+
+    private const val DEFAULT_MAX_CONCURRENT_DOWNLOADS = 8
 
     private var configuration: Configuration? = null
 
@@ -121,6 +135,10 @@ object PakkuApi
     /** How long an entire HTTP request may take, or `null` when it is not limited. */
     internal val requestTimeout: Duration?
         get() = configuration?.requestTimeout
+
+    /** How many files may be downloaded at the same time. */
+    internal val maxConcurrentDownloads: Int
+        get() = (configuration?.maxConcurrentDownloads ?: DEFAULT_MAX_CONCURRENT_DOWNLOADS).coerceAtLeast(1)
 }
 
 /** Initializes Pakku with the provided configuration. */

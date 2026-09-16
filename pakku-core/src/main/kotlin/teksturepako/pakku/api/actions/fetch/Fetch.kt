@@ -89,11 +89,8 @@ suspend fun List<ProjectFile>.fetch(
 
                         onProgress(completedBytes.value, totalBytes.value)
                         prevBytes.getAndSet(bytesSentTotal)
-                    }.get()
-
-                    if (bytes == null)
-                    {
-                        onError(DownloadFailed(path, retryNumber))
+                    }.getOrElse { error ->
+                        onError(DownloadFailed(path, retryNumber, cause = error))
                         send(Err(projectFile))
                         return@launch
                     }

@@ -117,7 +117,8 @@ sealed class RuleContext(
 
             if (outputPath.exists()) return@FileAction outputPath to null
 
-            val bytes = bytesCallback.invoke()?.get() ?: return@FileAction outputPath to DownloadFailed(outputPath)
+            val result = bytesCallback.invoke() ?: return@FileAction outputPath to DownloadFailed(outputPath)
+            val bytes = result.get() ?: return@FileAction outputPath to DownloadFailed(outputPath, cause = result.getError())
 
             outputPath.tryToResult { createParentDirectories() }
                 .onFailure { error ->

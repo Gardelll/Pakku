@@ -5,12 +5,14 @@ package teksturepako.pakku.api.http
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.mapError
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import teksturepako.pakku.api.actions.errors.ActionError
+import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakku.api.actions.errors.ProjNotFound
 import teksturepako.pakku.debug
 import teksturepako.pakku.toPrettyString
@@ -25,7 +27,8 @@ class RequestError(val response: HttpResponse, val body: String? = null) : Actio
 
 class ConnectionError(val exception: Exception) : ActionError()
 {
-    override val rawMessage = "HTTP connection error: ${exception.message}"
+    override val rawMessage =
+        "HTTP connection error: ${listOfNotNull(exception::class.simpleName, exception.message).joinToString(": ")}"
 }
 
 class InsecureUrl(val url: String) : ActionError()
@@ -58,6 +61,7 @@ suspend inline fun <reified T> tryRequest(block: () -> HttpResponse): Result<T, 
 
 /**
  * @return A body [ByteArray] of an HTTP(S) request, or an error if the status code is not OK.
+ * A missing file is reported as [FileNotFound].
  *
  * Callers that cannot verify content hashes should reject non-HTTPS URLs before calling this
  * (see [requireHttpsWhenUnverifiable]).
@@ -65,11 +69,11 @@ suspend inline fun <reified T> tryRequest(block: () -> HttpResponse): Result<T, 
 suspend fun requestByteArray(
     url: String,
     onDownload: suspend (bytesSentTotal: Long, contentLength: Long?) -> Unit = { _: Long, _: Long? -> }
-): Result<ByteArray, ActionError> = tryRequest {
+): Result<ByteArray, ActionError> = tryRequest<ByteArray> {
     pakkuClient.get(url) {
         onDownload { bytesSentTotal, contentLength -> onDownload(bytesSentTotal, contentLength) }
     }
-}
+}.mapError { error -> if (error is ProjNotFound) FileNotFound(url) else error }
 
 /**
  * When [hashes] are missing, non-HTTPS URLs are refused because integrity cannot be checked.

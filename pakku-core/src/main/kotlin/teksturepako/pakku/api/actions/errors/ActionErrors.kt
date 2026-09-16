@@ -45,9 +45,13 @@ data class NoUrl(val projectFile: ProjectFile) : ActionError()
     override val rawMessage = "${projectFile.fileName} has no URL."
 }
 
-data class DownloadFailed(val path: Path?, val retryNumber: Int = 0) : ActionError()
+data class DownloadFailed(val path: Path?, val retryNumber: Int = 0, val cause: ActionError? = null) : ActionError()
 {
-    override val rawMessage = "Failed to download '$path'. ${if (retryNumber > 0) "Retry number $retryNumber." else ""}"
+    override val rawMessage = message(
+        "Failed to download '$path'.",
+        if (retryNumber > 0) " Retry number $retryNumber." else null,
+        cause?.let { " Cause: ${it.rawMessage}" },
+    )
     override val severity = ErrorSeverity.FATAL
 }
 

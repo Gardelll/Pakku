@@ -58,6 +58,15 @@ Use the [`export_server_side_projects_to_client`](Config-File.md#export_server_s
 
 > For details on how project sides affect exporting behavior, see [Impact on Exporting](Overriding-Projects-Properties.md#impact-on-exporting).
 
+## Project Files in Exports
+
+When a [project file](Pakku-Terminology.md#project-file) is included in an export, e.g. in a ServerPack
+or as an [override](Pakku-Terminology.md#override), Pakku reuses the copy downloaded by [`pakku fetch`](pakku-fetch.md)
+if it matches its hashes in the lock file; otherwise, Pakku downloads the file and verifies it.
+
+If exporting a format fails, e.g. because a file cannot be downloaded,
+Pakku produces no file for it, deletes any existing file with the same name and exits with code `1`.
+
 ## How It Works?
 
 Pakku uses an export profile system under the hood.

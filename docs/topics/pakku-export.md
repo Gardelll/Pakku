@@ -24,6 +24,9 @@ Export modpack
 `--no-server`
 : Export modpack without server content. Modrinth: exclude server-overrides and SERVER mods; ServerPack: skip export.
 
+`-r`, `--retry`
+: How many times to retry a download which failed for a temporary reason (Defaults to 2)
+
 </snippet>
 
 `-h`, `--help`

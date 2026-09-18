@@ -37,7 +37,7 @@ Install modpack from a Git URL
 : Checkout <branch> instead of the remote's HEAD
 
 `-r`, `--retry`
-: Retries downloading when it fails, with optional number of times to retry (Defaults to 2)
+: How many times to retry a download which failed for a temporary reason (Defaults to 2)
 
 `-S`, `--server-pack`
 : Install the server pack

@@ -3,6 +3,20 @@
 
 ## Unreleased
 
+### Changed
+
+- Downloads are now retried up to 2 times by default, only on connection errors and HTTP 5xx or 429 responses; `-r`/`--retry <n>`, now also on `pakku export`, sets the limit.
+- `pakku fetch` and `pakku remote` now exit with code 1 when a project file cannot be downloaded, does not match its hashes or cannot be saved.
+- `pakku export` now reuses project files downloaded by `pakku fetch` when they match their hashes, and verifies the hashes of files it downloads.
+- At most 8 files are downloaded at the same time.
+
+### Fixed
+
+- Large downloads are no longer aborted after 3 minutes; the timeout now applies only while no data is being received.
+- A fatal export failure no longer produces an incomplete modpack file.
+- Fatal export errors are printed once instead of twice.
+- Failed downloads now report their cause.
+
 ## v1.5.0
 
 - Fixed flaky tests blocking nixpkgs update.

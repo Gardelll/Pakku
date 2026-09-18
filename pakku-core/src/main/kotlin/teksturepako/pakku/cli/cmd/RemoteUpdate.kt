@@ -19,6 +19,7 @@ import teksturepako.pakku.api.actions.errors.AlreadyExists
 import teksturepako.pakku.api.actions.fetch.DeletionActionType
 import teksturepako.pakku.api.actions.fetch.deleteOldFiles
 import teksturepako.pakku.api.actions.fetch.fetch
+import teksturepako.pakku.api.pakku
 import teksturepako.pakku.api.actions.fetch.retrieveProjectFiles
 import teksturepako.pakku.api.actions.remote.canInstallRemote
 import teksturepako.pakku.api.actions.remote.remoteUpdate
@@ -180,6 +181,8 @@ suspend fun CliktCommand.remoteUpdateImpl(
 
     launch { progressBar.execute() }
 
+    args.retryOpt?.let { pakku { withMaxDownloadRetries(it) } }
+
     val fetchJob = projectFiles.fetch(
         onError = { error ->
             if (error !is AlreadyExists) terminal.pError(error)
@@ -195,7 +198,7 @@ suspend fun CliktCommand.remoteUpdateImpl(
 
             terminal.pSuccess("$slug saved to $path")
         },
-        lockFile, configFile, args.retryOpt
+        lockFile, configFile
     )
 
     // -- OVERRIDES --

@@ -15,6 +15,7 @@ object PakkuApi
         internal var connectTimeout: Duration = 30.seconds,
         internal var requestTimeout: Duration? = null,
         internal var maxConcurrentDownloads: Int = DEFAULT_MAX_CONCURRENT_DOWNLOADS,
+        internal var maxDownloadRetries: Int = DEFAULT_MAX_DOWNLOAD_RETRIES,
     )
     {
         /** Enables development mode for testing purposes. */
@@ -41,12 +42,7 @@ object PakkuApi
             this.userAgent = agent
         }
 
-        /**
-         * Sets how long an HTTP request may stall.
-         *
-         * Large downloads are not limited by how long they take in total,
-         * only by how long they go without transferring data.
-         */
+        /** Sets how long an HTTP request may stall, i.e. go without transferring data. */
         fun withTimeout(timeout: Duration)
         {
             this.timeout = timeout
@@ -58,26 +54,22 @@ object PakkuApi
             this.connectTimeout = timeout
         }
 
-        /**
-         * Sets how long an entire HTTP request may take, including the transfer of its body.
-         *
-         * `null` (the default) does not limit the total duration,
-         * which lets slow downloads finish as long as they keep making progress.
-         */
+        /** Sets how long an entire HTTP request may take, or `null` to not limit it. */
         fun withRequestTimeout(timeout: Duration?)
         {
             this.requestTimeout = timeout
         }
 
-        /**
-         * Sets how many files may be downloaded at the same time.
-         *
-         * Downloaded files are held in memory, so this bounds how much
-         * memory downloading a modpack can take.
-         */
+        /** Sets how many files may be downloaded at the same time. */
         fun withMaxConcurrentDownloads(count: Int)
         {
             this.maxConcurrentDownloads = count.coerceAtLeast(1)
+        }
+
+        /** Sets how many times a download which failed for a temporary reason is attempted again. */
+        fun withMaxDownloadRetries(count: Int)
+        {
+            this.maxDownloadRetries = count.coerceAtLeast(0)
         }
 
         internal fun verify()
@@ -94,6 +86,7 @@ object PakkuApi
     }
 
     private const val DEFAULT_MAX_CONCURRENT_DOWNLOADS = 8
+    private const val DEFAULT_MAX_DOWNLOAD_RETRIES = 2
 
     private var configuration: Configuration? = null
 
@@ -138,7 +131,11 @@ object PakkuApi
 
     /** How many files may be downloaded at the same time. */
     internal val maxConcurrentDownloads: Int
-        get() = (configuration?.maxConcurrentDownloads ?: DEFAULT_MAX_CONCURRENT_DOWNLOADS).coerceAtLeast(1)
+        get() = configuration?.maxConcurrentDownloads ?: DEFAULT_MAX_CONCURRENT_DOWNLOADS
+
+    /** How many times a download which failed for a temporary reason is attempted again. */
+    internal val maxDownloadRetries: Int
+        get() = configuration?.maxDownloadRetries ?: DEFAULT_MAX_DOWNLOAD_RETRIES
 }
 
 /** Initializes Pakku with the provided configuration. */

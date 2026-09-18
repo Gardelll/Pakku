@@ -24,6 +24,7 @@ import teksturepako.pakku.api.actions.fetch.deleteOldFiles
 import teksturepako.pakku.api.actions.fetch.fetch
 import teksturepako.pakku.api.actions.fetch.retrieveProjectFiles
 import teksturepako.pakku.api.actions.sync.sync
+import teksturepako.pakku.api.pakku
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.Dirs
 import teksturepako.pakku.api.data.LockFile
@@ -31,6 +32,7 @@ import teksturepako.pakku.api.overrides.readManualOverrides
 import teksturepako.pakku.api.platforms.Platform
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.cli.ui.*
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
@@ -41,16 +43,17 @@ class Fetch : CliktCommand()
     override fun help(context: Context) = "Download project files to your modpack folder"
 
     private val retryOpt: Int? by option("-r", "--retry", metavar = "<n>")
-        .help("Number of times to retry downloading when it fails (Defaults to 2; '--retry 0' disables retrying)")
+        .help("How many times to retry a download which failed for a temporary reason (Defaults to 2)")
         .int()
         .optionalValue(2)
-        .default(2)
 
     private val shelveFlag: Boolean by option("--shelve")
         .help("Moves unknown project files to a shelf instead of deleting them")
         .flag()
 
     override fun run() = runBlocking {
+        retryOpt?.let { pakku { withMaxDownloadRetries(it) } }
+
         val lockFile = LockFile.readToResult().getOrElse {
             terminal.pError(it)
             echo()
@@ -91,16 +94,17 @@ class Fetch : CliktCommand()
         launch { progressBar.execute() }
 
         /** Files which failed to be fetched; a retry which succeeds removes its file again. */
-        val missingFiles: MutableSet<java.nio.file.Path> = ConcurrentHashMap.newKeySet()
+        val missingFiles: MutableSet<Path> = ConcurrentHashMap.newKeySet()
         var fatal = false
 
         val fetchJob = projectFiles.fetch(
             onError = { error ->
-                when
+                if (error.severity == ErrorSeverity.FATAL)
                 {
-                    error is DownloadFailed               -> error.path?.let { missingFiles.add(it) }
-                    error is HashMismatch                 -> error.path?.let { missingFiles.add(it) }
-                    error.severity == ErrorSeverity.FATAL -> fatal = true
+                    // A fatal error naming a file leaves that file missing; one without a file fails the command.
+                    val failedPath = (error as? DownloadFailed)?.path ?: (error as? HashMismatch)?.path
+
+                    if (failedPath != null) missingFiles.add(failedPath) else fatal = true
                 }
 
                 if (error !is AlreadyExists) terminal.pError(error)
@@ -118,7 +122,7 @@ class Fetch : CliktCommand()
 
                 terminal.pSuccess("$slug saved to $path")
             },
-            lockFile, configFile, retryOpt
+            lockFile, configFile
         )
 
         // -- OVERRIDES --

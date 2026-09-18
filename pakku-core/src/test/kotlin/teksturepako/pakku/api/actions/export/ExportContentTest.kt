@@ -11,12 +11,8 @@ import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.DownloadFailed
 import teksturepako.pakku.api.actions.errors.HashMismatch
 import teksturepako.pakku.api.actions.errors.NoUrl
-import teksturepako.pakku.api.data.ConfigFile
-import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.http.ConnectionError
-import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectFile
-import teksturepako.pakku.api.projects.ProjectType
 import teksturepako.pakku.io.createHash
 import java.io.IOException
 import java.nio.file.Path
@@ -90,7 +86,7 @@ class ExportContentTest : PakkuTest(debug = false)
 
     @Test
     fun `failed download keeps its cause`(): Unit = runBlocking {
-        val context = exportContext("download-failure")
+        val context = exportRuleContext("download-failure")
         val cause = ConnectionError(IOException("connection reset"))
         val errors = mutableListOf<ActionError>()
 
@@ -102,39 +98,6 @@ class ExportContentTest : PakkuTest(debug = false)
         assertEquals(cause, error.cause)
         assertTrue("connection reset" in error.rawMessage)
     }
-
-    @Test
-    fun `failed download is retried`(): Unit = runBlocking {
-        val context = exportContext("download-retry")
-        var attempts = 0
-        val errors = mutableListOf<ActionError>()
-
-        val paths = listOf(context.createFile(
-            bytesCallback = {
-                attempts++
-                if (attempts <= 2) Err(ConnectionError(IOException("connection reset"))) else Ok(content)
-            },
-            path = "mods",
-            subpath = arrayOf("retried.jar"),
-        )).runEffects(retry = 2) { errors += it }.awaitAll()
-
-        assertEquals(3, attempts)
-        assertEquals(listOf(context.getPath("mods", "retried.jar")), paths)
-        assertTrue(errors.isEmpty())
-    }
-
-    private fun exportContext(subdir: String) = RuleContext.MissingProject(
-        project = Project(
-            type = ProjectType.MOD,
-            slug = mutableMapOf("test" to "test"),
-            name = mutableMapOf("test" to "Test"),
-            id = mutableMapOf("test" to "test"),
-            files = mutableSetOf(),
-        ),
-        lockFile = LockFile(),
-        configFile = ConfigFile(),
-        workingSubDir = subdir,
-    )
 
     private fun localFile(fileName: String, bytes: ByteArray): Path = testPath("mods", fileName).also {
         it.createParentDirectories()

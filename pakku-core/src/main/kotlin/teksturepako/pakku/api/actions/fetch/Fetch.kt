@@ -42,16 +42,14 @@ suspend fun List<ProjectFile>.fetch(
     onSuccess: suspend (path: Path, projectFile: ProjectFile) -> Unit,
     lockFile: LockFile,
     configFile: ConfigFile?,
-    retry: Int? = null,
     outputDir: Path = Path(workingPath)
 ) = coroutineScope {
-    tailrec suspend fun tryFetch(projectFiles: List<ProjectFile>, retryNumber: Int = 0)
-    {
+    launch {
         val totalBytes: AtomicLong = atomic(0L)
         val completedBytes: AtomicLong = atomic(0L)
-        
+
         val fetchChannel = produce {
-            for (projectFile in projectFiles)
+            for (projectFile in this@fetch)
             {
                 launch {
                     val parentProject = projectFile.getParentProject(lockFile) ?: return@launch
@@ -83,15 +81,21 @@ suspend fun List<ProjectFile>.fetch(
 
                     totalBytes += projectFile.size.toLong()
                     val prevBytes: AtomicLong = atomic(0L)
+                    var retries = 0
 
-                    val bytes = requestByteArray(url) { bytesSentTotal, _ ->
+                    val bytes = requestByteArray(
+                        url,
+                        onRetry = { retryNumber, cause ->
+                            onError(DownloadFailed(path, retryNumber - 1, cause = cause))
+                            retries = retryNumber
+                        },
+                    ) { bytesSentTotal, _ ->
                         completedBytes.getAndAdd(bytesSentTotal - prevBytes.value)
 
                         onProgress(completedBytes.value, totalBytes.value)
                         prevBytes.getAndSet(bytesSentTotal)
                     }.getOrElse { error ->
-                        onError(DownloadFailed(path, retryNumber, cause = error))
-                        send(Err(projectFile))
+                        onError(DownloadFailed(path, retries, cause = error))
                         return@launch
                     }
 
@@ -101,44 +105,26 @@ suspend fun List<ProjectFile>.fetch(
                         if (err is HashMismatch) return@launch
                     }
 
-                    send(Ok(Triple(path, projectFile, bytes)))
+                    send(Triple(path, projectFile, bytes))
                 }
             }
         }
 
         val jobs = mutableListOf<Job>()
-        val fails = mutableListOf<Deferred<ProjectFile>>()
 
-        fetchChannel.consumeEach { result ->
-            result.onSuccess { (path, projectFile, bytes) ->
-                jobs += launch(Dispatchers.IO) {
-                    runCatching {
-                        path.createParentDirectories()
-                        path.writeBytes(bytes)
-                    }.onSuccess {
-                        onSuccess(path, projectFile)
-                    }.onFailure {
-                        onError(CouldNotSave(path, it.stackTraceToString()))
-                    }
-                }
-            }.onFailure { projectFile ->
-                fails += async {
-                    projectFile
+        fetchChannel.consumeEach { (path, projectFile, bytes) ->
+            jobs += launch(Dispatchers.IO) {
+                runCatching {
+                    path.createParentDirectories()
+                    path.writeBytes(bytes)
+                }.onSuccess {
+                    onSuccess(path, projectFile)
+                }.onFailure {
+                    onError(CouldNotSave(path, it.stackTraceToString()))
                 }
             }
         }
 
         jobs.joinAll()
-
-        val filesToRetry = fails.awaitAll()
-
-        if (retry != null && retryNumber < retry && retryNumber < 3 && filesToRetry.isNotEmpty())
-        {
-            tryFetch(filesToRetry, retryNumber + 1)
-        }
-    }
-
-    launch {
-        tryFetch(this@fetch)
     }
 }

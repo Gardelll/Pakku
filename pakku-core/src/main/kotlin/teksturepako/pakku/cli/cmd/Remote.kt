@@ -22,6 +22,7 @@ import kotlinx.atomicfu.update
 import kotlinx.coroutines.*
 import teksturepako.pakku.api.actions.errors.AlreadyExists
 import teksturepako.pakku.api.actions.fetch.fetch
+import teksturepako.pakku.api.pakku
 import teksturepako.pakku.api.actions.fetch.retrieveProjectFiles
 import teksturepako.pakku.api.actions.remote.remoteInstall
 import teksturepako.pakku.api.actions.remote.remoteRemove
@@ -51,10 +52,9 @@ class Remote : CliktCommand()
         .help("Checkout <branch> instead of the remote's HEAD")
 
     private val retryOpt: Int? by option("-r", "--retry", metavar = "<n>")
-        .help("Retries downloading when it fails, with optional number of times to retry (Defaults to 2)")
+        .help("How many times to retry a download which failed for a temporary reason (Defaults to 2)")
         .int()
         .optionalValue(2)
-        .default(0)
 
     private val serverPackFlag by option("-S", "--server-pack")
         .help("Install the server pack")
@@ -246,6 +246,8 @@ suspend fun CliktCommand.remoteInstallImpl(args: Remote.Args) = coroutineScope {
 
     launch { progressBar.execute() }
 
+    args.retryOpt?.let { pakku { withMaxDownloadRetries(it) } }
+
     val fetchJob = projectFiles.fetch(
         onError = { error ->
             if (error !is AlreadyExists) terminal.pError(error)
@@ -261,7 +263,7 @@ suspend fun CliktCommand.remoteInstallImpl(args: Remote.Args) = coroutineScope {
 
             terminal.pSuccess("$slug saved to $path")
         },
-        lockFile, configFile, args.retryOpt
+        lockFile, configFile
     )
 
     // -- OVERRIDES --

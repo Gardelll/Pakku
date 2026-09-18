@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.actions.errors.ErrorSeverity
 import teksturepako.pakku.api.actions.export.exportDefaultProfiles
+import teksturepako.pakku.api.pakku
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.parentConfigFilePath
@@ -53,13 +54,14 @@ class Export : CliktCommand()
         .help("Export modpack without server content. Modrinth: exclude server-overrides and SERVER mods; ServerPack: skip export.")
         .flag()
 
-    private val retryOpt: Int by option("-r", "--retry", metavar = "<n>")
-        .help("Retries downloading when it fails, with optional number of times to retry (Defaults to 2)")
+    private val retryOpt: Int? by option("-r", "--retry", metavar = "<n>")
+        .help("How many times to retry a download which failed for a temporary reason (Defaults to 2)")
         .int()
         .optionalValue(2)
-        .default(0)
 
     override fun run(): Unit = runBlocking {
+        retryOpt?.let { pakku { withMaxDownloadRetries(it) } }
+
         val lockFile = LockFile.readToResult().getOrElse {
             terminal.pError(it)
             echo()
@@ -165,12 +167,10 @@ class Export : CliktCommand()
                     terminal.promptForCurseForgeApiKey()?.onError { terminal.pError(it) }
                 }
 
-                if (error.severity == ErrorSeverity.FATAL)
-                {
-                    terminal.pError(error, prepend = "FATAL [${profile.name} profile]")
-                    fatal = true
-                }
-                else terminal.pError(error, prepend = "[${profile.name} profile]")
+                val isFatal = error.severity == ErrorSeverity.FATAL
+                if (isFatal) fatal = true
+
+                terminal.pError(error, prepend = "${if (isFatal) "FATAL " else ""}[${profile.name} profile]")
             },
             onSuccess = { profile, file, duration ->
                 val fileSize = file.fileSize().toHumanReadableSize()
@@ -178,7 +178,7 @@ class Export : CliktCommand()
                 terminal.pSuccess("[${profile.name} profile] exported to '$file' ($fileSize) in ${duration.shortForm()}")
             },
             exportLockFile, migratedConfig, platforms, noServer,
-            parentOverrides = parentOverrides, manualOverrides = forkManualOverrides, retry = retryOpt
+            parentOverrides = parentOverrides, manualOverrides = forkManualOverrides
         ).joinAll()
 
         progressBar.clear()

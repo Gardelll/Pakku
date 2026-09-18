@@ -3,13 +3,16 @@ package teksturepako.pakku.api.actions.export
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getOrElse
+import com.github.michaelbull.result.runCatching
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.HashMismatch
 import teksturepako.pakku.api.actions.errors.NoUrl
 import teksturepako.pakku.api.http.requestByteArray
 import teksturepako.pakku.api.http.requireHttpsWhenUnverifiable
 import teksturepako.pakku.api.projects.ProjectFile
+import teksturepako.pakku.io.tryOrNull
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.fileSize
@@ -44,7 +47,7 @@ suspend fun resolveExportContent(
 
     val bytes = resolveRemote(file)?.getOrElse { return Err(it) } ?: return Err(NoUrl(file))
 
-    val mismatch = runCatching { file.checkIntegrity(bytes, Path(file.fileName)) }.getOrNull()
+    val mismatch = runCatching { file.checkIntegrity(bytes, Path(file.fileName)) }.get()
     return if (mismatch is HashMismatch) Err(mismatch) else Ok(bytes)
 }
 
@@ -56,9 +59,19 @@ suspend fun resolveExportContentFromRemote(file: ProjectFile): Result<ByteArray,
 }
 
 /** Returns the content at [path] only if it matches all hashes of this file. */
-private fun ProjectFile.readVerifiedLocalContent(path: Path): ByteArray? = runCatching {
-    if (hashes.isNullOrEmpty() || !path.isRegularFile()) return null
-    if (size > 0 && path.fileSize() != size.toLong()) return null
+private suspend fun ProjectFile.readVerifiedLocalContent(path: Path): ByteArray?
+{
+    if (hashes.isNullOrEmpty()) return null
 
-    path.readBytes().takeIf { checkIntegrity(it, path) == null }
-}.getOrNull()
+    val expectedSize = size
+
+    return path.tryOrNull {
+        when
+        {
+            !isRegularFile()                                        -> null
+            expectedSize > 0 && fileSize() != expectedSize.toLong() -> null
+            else                                                    -> readBytes()
+                .takeIf { checkIntegrity(it, path) == null }
+        }
+    }
+}

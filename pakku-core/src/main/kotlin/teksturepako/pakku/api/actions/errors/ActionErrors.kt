@@ -47,11 +47,11 @@ data class NoUrl(val projectFile: ProjectFile) : ActionError()
 
 data class DownloadFailed(val path: Path?, val retryNumber: Int = 0, val cause: ActionError? = null) : ActionError()
 {
-    override val rawMessage = message(
+    override val rawMessage = listOfNotNull(
         "Failed to download '$path'.",
-        if (retryNumber > 0) " Retry number $retryNumber." else null,
-        cause?.let { " Cause: ${it.rawMessage}" },
-    )
+        if (retryNumber > 0) "Retry number $retryNumber." else null,
+        cause?.let { "Cause: ${it.rawMessage}" },
+    ).joinToString(" ")
     override val severity = ErrorSeverity.FATAL
 }
 

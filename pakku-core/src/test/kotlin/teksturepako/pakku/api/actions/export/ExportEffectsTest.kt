@@ -7,10 +7,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import teksturepako.pakku.PakkuTest
-import teksturepako.pakku.api.data.ConfigFile
-import teksturepako.pakku.api.data.LockFile
-import teksturepako.pakku.api.projects.Project
-import teksturepako.pakku.api.projects.ProjectType
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.writeBytes
 import kotlin.test.Test
@@ -23,7 +19,7 @@ class ExportEffectsTest : PakkuTest(debug = false)
 {
     @Test
     fun `cache hits succeed without resolving content`() = runBlocking {
-        val context = context("cache-hit")
+        val context = exportRuleContext("cache-hit")
         val outputPath = context.getPath("mods", "cached.jar")
         outputPath.createParentDirectories()
         outputPath.writeBytes(byteArrayOf(1))
@@ -46,7 +42,7 @@ class ExportEffectsTest : PakkuTest(debug = false)
     @Test
     fun `file actions only wait for the same output path`() = runBlocking {
         withTimeout(5_000) {
-            val context = context("ordering")
+            val context = exportRuleContext("ordering")
             val sharedPath = context.getPath("shared")
             val independentPath = context.getPath("independent")
             val firstStarted = CompletableDeferred<Unit>()
@@ -83,17 +79,4 @@ class ExportEffectsTest : PakkuTest(debug = false)
             assertTrue(secondStarted.isCompleted)
         }
     }
-
-    private fun context(subdir: String) = RuleContext.MissingProject(
-        project = Project(
-            type = ProjectType.MOD,
-            slug = mutableMapOf("test" to "test"),
-            name = mutableMapOf("test" to "Test"),
-            id = mutableMapOf("test" to "test"),
-            files = mutableSetOf(),
-        ),
-        lockFile = LockFile(),
-        configFile = ConfigFile(),
-        workingSubDir = subdir,
-    )
 }

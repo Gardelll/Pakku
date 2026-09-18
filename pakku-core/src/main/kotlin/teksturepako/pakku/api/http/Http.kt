@@ -5,6 +5,7 @@ package teksturepako.pakku.api.http
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.getError
 import com.github.michaelbull.result.mapError
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -62,26 +63,64 @@ suspend inline fun <reified T> tryRequest(block: () -> HttpResponse): Result<T, 
     }
 }
 
-/** Bounds how many files are downloaded at once, because each one is held in memory as a whole. */
+/** Bounds how many downloads buffer a whole file in memory at the same time. */
 private val downloadSemaphore by lazy { Semaphore(PakkuApi.maxConcurrentDownloads) }
+
+/** Whether the same request could still succeed if it were made again. */
+private fun ActionError.isTransient(): Boolean = when (this)
+{
+    is ConnectionError -> true
+    is RequestError    -> response.status.value >= 500 || response.status == HttpStatusCode.TooManyRequests
+    else               -> false
+}
+
+/**
+ * Runs [request], repeating it while it fails for a reason which may resolve itself,
+ * at most [maxRetries] times. [onRetry] is called before each new attempt.
+ */
+internal suspend fun <T> retryTransient(
+    maxRetries: Int,
+    onRetry: suspend (retryNumber: Int, cause: ActionError) -> Unit = { _, _ -> },
+    request: suspend () -> Result<T, ActionError>,
+): Result<T, ActionError>
+{
+    var retryNumber = 0
+
+    while (true)
+    {
+        val result = request()
+        val error = result.getError() ?: return result
+
+        if (!error.isTransient() || retryNumber >= maxRetries) return result
+
+        retryNumber++
+        onRetry(retryNumber, error)
+    }
+}
 
 /**
  * @return A body [ByteArray] of an HTTP(S) request, or an error if the status code is not OK.
  * A missing file is reported as [FileNotFound].
+ *
+ * A download which fails for a temporary reason is retried;
+ * see [PakkuApi.Configuration.withMaxDownloadRetries].
  *
  * Callers that cannot verify content hashes should reject non-HTTPS URLs before calling this
  * (see [requireHttpsWhenUnverifiable]).
  */
 suspend fun requestByteArray(
     url: String,
+    onRetry: suspend (retryNumber: Int, cause: ActionError) -> Unit = { _, _ -> },
     onDownload: suspend (bytesSentTotal: Long, contentLength: Long?) -> Unit = { _: Long, _: Long? -> }
-): Result<ByteArray, ActionError> = downloadSemaphore.withPermit {
-    tryRequest<ByteArray> {
-        pakkuClient.get(url) {
-            onDownload { bytesSentTotal, contentLength -> onDownload(bytesSentTotal, contentLength) }
+): Result<ByteArray, ActionError> = retryTransient(PakkuApi.maxDownloadRetries, onRetry) {
+    downloadSemaphore.withPermit {
+        tryRequest<ByteArray> {
+            pakkuClient.get(url) {
+                onDownload { bytesSentTotal, contentLength -> onDownload(bytesSentTotal, contentLength) }
+            }
         }
-    }
-}.mapError { error -> if (error is ProjNotFound) FileNotFound(url) else error }
+    }.mapError { error -> if (error is ProjNotFound) FileNotFound(url) else error }
+}
 
 /**
  * When [hashes] are missing, non-HTTPS URLs are refused because integrity cannot be checked.

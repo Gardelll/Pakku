@@ -37,14 +37,13 @@ suspend fun exportDefaultProfiles(
     deps: ExportDeps = defaultExportDeps(),
     parentOverrides: OverridesDeferred? = null,
     manualOverrides: Collection<ManualOverride>? = null,
-    retry: Int = 0,
 ): List<Job>
 {
     return export(
         profiles = defaultProfiles,
         onError = { profile, error -> onError(profile, error) },
         onSuccess = { profile, path, duration -> onSuccess(profile, path, duration) },
-        lockFile, configFile, platforms, noServer, deps, parentOverrides, manualOverrides, retry
+        lockFile, configFile, platforms, noServer, deps, parentOverrides, manualOverrides
     )
 }
 
@@ -59,7 +58,6 @@ suspend fun export(
     deps: ExportDeps = defaultExportDeps(),
     parentOverrides: OverridesDeferred? = null,
     manualOverrides: Collection<ManualOverride>? = null,
-    retry: Int = 0,
 ): List<Job> = coroutineScope {
     val overrides = getOverridesAsync(configFile)
 
@@ -68,7 +66,7 @@ suspend fun export(
             profile.build(exportRuleScope(lockFile, configFile)).export(
                 onError = { profile, error -> onError(profile, error) },
                 onSuccess = { profile, path, duration -> onSuccess(profile, path, duration) },
-                lockFile, configFile, platforms, overrides, noServer, deps, parentOverrides, manualOverrides, retry
+                lockFile, configFile, platforms, overrides, noServer, deps, parentOverrides, manualOverrides
             )
         }
     }
@@ -85,7 +83,6 @@ suspend fun ExportProfile.export(
     deps: ExportDeps = defaultExportDeps(),
     parentOverrides: OverridesDeferred? = null,
     manualOverrides: Collection<ManualOverride>? = null,
-    retry: Int = 0,
 )
 {
     if (this.requiresPlatform != null && this.requiresPlatform !in platforms) return
@@ -128,13 +125,9 @@ suspend fun ExportProfile.export(
             onError(this, error)
         }
 
-        val cachedPaths: List<Path> = results
-            .runEffects(retry, reportError)
-            .awaitAll()
-            .filterNotNull() + results
-                .runEffectsOnFinished(reportError)
-                .awaitAll()
-                .filterNotNull()
+        val cachedPaths: List<Path> =
+            results.runEffects(reportError).awaitAll().filterNotNull() +
+            results.runEffectsOnFinished(reportError).awaitAll().filterNotNull()
 
         cleanUpDirectory(
             inputDirectory, cachedPaths,
@@ -185,7 +178,6 @@ suspend fun ExportProfile.export(
 }
 
 suspend fun List<RuleResult>.runEffects(
-    retry: Int = 0,
     onError: suspend (error: ActionError) -> Unit
 ): List<Deferred<Path?>> = coroutineScope {
     val previousFileActions = mutableMapOf<Path, Deferred<Path?>>()
@@ -241,7 +233,7 @@ suspend fun List<RuleResult>.runEffects(
                     val action = measureTimedValue {
                         async(Dispatchers.IO) {
                             predecessor?.await()
-                            packagingAction.runWithRetry(retry).let { (file, error) ->
+                            packagingAction.action().let { (file, error) ->
                                 if (error != null) onError(error)
                                 file
                             }
@@ -261,29 +253,6 @@ suspend fun List<RuleResult>.runEffects(
     }
 }
 
-private const val MAX_RETRIES = 3
-
-/**
- * Runs this [file action][FileAction], repeating it while its content could not be downloaded,
- * at most [retry] times and never more than [MAX_RETRIES] times.
- */
-private suspend fun FileAction.runWithRetry(retry: Int): Pair<Path, ActionError?>
-{
-    var (file, error) = action()
-    var retryNumber = 0
-
-    while (error is DownloadFailed && retryNumber < retry && retryNumber < MAX_RETRIES)
-    {
-        retryNumber++
-        debug { println("Retrying download of '$file'. Retry number $retryNumber.") }
-
-        val retried = action()
-        file = retried.first
-        error = retried.second
-    }
-
-    return file to error?.let { if (it is DownloadFailed) it.copy(retryNumber = retryNumber) else it }
-}
 
 suspend fun List<RuleResult>.runEffectsOnFinished(
     onError: suspend (error: ActionError) -> Unit

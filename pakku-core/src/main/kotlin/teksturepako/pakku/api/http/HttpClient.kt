@@ -6,16 +6,14 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import kotlinx.serialization.json.Json
 import teksturepako.pakku.api.PakkuApi
+import kotlin.time.Duration
 import kotlin.time.toJavaDuration
-import java.time.Duration as JavaDuration
 
 val pakkuClient = HttpClient(OkHttp) {
     install(ContentNegotiation) {
         Json
     }
     install(HttpTimeout) {
-        // A download is bound by how long it can stall, not by how long it takes in total,
-        // so that large files are not cancelled while they are still making progress.
         socketTimeoutMillis = PakkuApi.timeout.inWholeMilliseconds
         connectTimeoutMillis = PakkuApi.connectTimeout.inWholeMilliseconds
         requestTimeoutMillis = PakkuApi.requestTimeout?.inWholeMilliseconds
@@ -27,14 +25,16 @@ val pakkuClient = HttpClient(OkHttp) {
     engine {
         pipelining = true
         config {
+            val stallTimeout = PakkuApi.timeout.toJavaDuration()
+
             retryOnConnectionFailure(true)
 
             connectTimeout(PakkuApi.connectTimeout.toJavaDuration())
-            readTimeout(PakkuApi.timeout.toJavaDuration())
-            writeTimeout(PakkuApi.timeout.toJavaDuration())
+            readTimeout(stallTimeout)
+            writeTimeout(stallTimeout)
 
             // `ZERO` disables the limit on the duration of the whole call.
-            callTimeout(PakkuApi.requestTimeout?.toJavaDuration() ?: JavaDuration.ZERO)
+            callTimeout((PakkuApi.requestTimeout ?: Duration.ZERO).toJavaDuration())
         }
     }
 }

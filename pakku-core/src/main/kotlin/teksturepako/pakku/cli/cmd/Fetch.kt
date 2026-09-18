@@ -16,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.actions.errors.AlreadyExists
+import teksturepako.pakku.api.actions.errors.CouldNotSave
 import teksturepako.pakku.api.actions.errors.DownloadFailed
 import teksturepako.pakku.api.actions.errors.ErrorSeverity
 import teksturepako.pakku.api.actions.errors.HashMismatch
@@ -99,13 +100,17 @@ class Fetch : CliktCommand()
 
         val fetchJob = projectFiles.fetch(
             onError = { error ->
-                if (error.severity == ErrorSeverity.FATAL)
+                // An error naming a file leaves that file missing; a fatal error without one fails the command.
+                val failedPath = when (error)
                 {
-                    // A fatal error naming a file leaves that file missing; one without a file fails the command.
-                    val failedPath = (error as? DownloadFailed)?.path ?: (error as? HashMismatch)?.path
-
-                    if (failedPath != null) missingFiles.add(failedPath) else fatal = true
+                    is DownloadFailed -> error.path
+                    is HashMismatch   -> error.path
+                    is CouldNotSave   -> error.path
+                    else              -> null
                 }
+
+                if (failedPath != null) missingFiles.add(failedPath)
+                else if (error.severity == ErrorSeverity.FATAL) fatal = true
 
                 if (error !is AlreadyExists) terminal.pError(error)
             },

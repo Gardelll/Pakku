@@ -83,12 +83,7 @@ data class Project(
 
                 subpath = this.subpath ?: other.subpath,
                 aliases = this.aliases?.plus(other.aliases ?: emptySet())?.toMutableSet() ?: other.aliases,
-                export = when
-                {
-                    this.export != null  -> this.export
-                    other.export != null -> other.export
-                    else                 -> null
-                },
+                export = this.export ?: other.export,
 
                 files = (this.files + other.files).toMutableSet(),
             )

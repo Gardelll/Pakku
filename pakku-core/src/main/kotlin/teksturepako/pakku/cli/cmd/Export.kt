@@ -189,12 +189,10 @@ class Export : CliktCommand()
             export(
                 profiles = listOf(hmclModpackProfile()),
                 onError = { profile, error ->
-                    if (error.severity == ErrorSeverity.FATAL) {
-                        terminal.pError(error, prepend = "FATAL [${profile.name} profile]")
-                        fatal = true
-                    }
+                    val isFatal = error.severity == ErrorSeverity.FATAL
+                    if (isFatal) fatal = true
 
-                    terminal.pError(error, prepend = "[${profile.name} profile]")
+                    terminal.pError(error, prepend = "${if (isFatal) "FATAL " else ""}[${profile.name} profile]")
                 },
                 onSuccess = { profile, file, duration ->
                     val fileSize = file.fileSize().toHumanReadableSize()

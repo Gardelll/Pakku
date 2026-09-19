@@ -87,18 +87,20 @@ private fun Path.hasUnsafeAbsolutePathComponents(): Boolean =
         name == ".." || name.isWindowsDeviceName()
     }
 
+private val DRIVE_LETTER = Regex("[A-Z]:[/\\\\]")
+private val WINDOWS_DEVICE_NAME = Regex("^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\.|$)")
+
 private fun String.hasUnsafeRelativePathComponents(): Boolean
 {
     return this.contains("..")
-        || this.contains(Regex("[A-Z]:/"))
-        || this.contains(Regex("[A-Z]:\\\\"))
+        || this.contains(DRIVE_LETTER)
         || this.startsWith("/")
         || this.startsWith("\\")
         || this.split(File.separator).any { it.isWindowsDeviceName() }
 }
 
 private fun String.isWindowsDeviceName(): Boolean =
-    this.uppercase().matches(Regex("^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\.|$)"))
+    this.uppercase().matches(WINDOWS_DEVICE_NAME)
 
 fun Path.isWithinBounds(baseDir: Path): Boolean
 {

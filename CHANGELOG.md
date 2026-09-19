@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+## v1.5.1-hmcl
+
 ### Changed
 
 - Downloads are now retried up to 2 times by default, only on connection errors and HTTP 5xx or 429 responses; `-r`/`--retry <n>`, now also on `pakku export`, sets the limit.

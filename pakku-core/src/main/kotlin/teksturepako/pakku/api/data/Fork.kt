@@ -8,25 +8,12 @@ import com.github.michaelbull.result.map
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakku.io.createHash
 import java.nio.file.Path
-import java.security.MessageDigest
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 
-fun sha256(path: Path): String
-{
-    val digest = MessageDigest.getInstance("SHA-256")
-    path.inputStream().use { input ->
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        while (true)
-        {
-            val bytesRead = input.read(buffer)
-            if (bytesRead == -1) break
-            digest.update(buffer, 0, bytesRead)
-        }
-    }
-    return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
-}
+fun sha256(path: Path): String = path.inputStream().use { createHash("sha256", it) }
 
 fun parentLockFilePath(parentDir: Path = Dirs.parentDir): Path? =
     parentDir.resolve(LockFile.FILE_NAME).takeIf { it.exists() }

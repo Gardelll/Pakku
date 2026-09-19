@@ -11,8 +11,8 @@ object PakkuApi
         internal var curseForgeApiKey: String? = null,
         internal var gitHubAccessToken: String? = null,
         internal var userAgent: String? = null,
-        internal var timeout: Duration = 3.minutes,
-        internal var connectTimeout: Duration = 30.seconds,
+        internal var timeout: Duration = DEFAULT_TIMEOUT,
+        internal var connectTimeout: Duration = DEFAULT_CONNECT_TIMEOUT,
         internal var requestTimeout: Duration? = null,
         internal var maxConcurrentDownloads: Int = DEFAULT_MAX_CONCURRENT_DOWNLOADS,
         internal var maxDownloadRetries: Int = DEFAULT_MAX_DOWNLOAD_RETRIES,
@@ -85,6 +85,8 @@ object PakkuApi
         }
     }
 
+    private val DEFAULT_TIMEOUT = 3.minutes
+    private val DEFAULT_CONNECT_TIMEOUT = 30.seconds
     private const val DEFAULT_MAX_CONCURRENT_DOWNLOADS = 8
     internal const val DEFAULT_MAX_DOWNLOAD_RETRIES = 2
 
@@ -119,11 +121,11 @@ object PakkuApi
 
     /** How long an HTTP request may stall before it is cancelled. */
     internal val timeout: Duration
-        get() = configuration?.timeout ?: 3.minutes
+        get() = configuration?.timeout ?: DEFAULT_TIMEOUT
 
     /** How long establishing a connection may take. */
     internal val connectTimeout: Duration
-        get() = configuration?.connectTimeout ?: 30.seconds
+        get() = configuration?.connectTimeout ?: DEFAULT_CONNECT_TIMEOUT
 
     /** How long an entire HTTP request may take, or `null` when it is not limited. */
     internal val requestTimeout: Duration?

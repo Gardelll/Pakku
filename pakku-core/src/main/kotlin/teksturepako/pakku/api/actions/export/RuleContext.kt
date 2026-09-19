@@ -1,8 +1,8 @@
 package teksturepako.pakku.api.actions.export
 
 import com.github.michaelbull.result.Result
-import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
+import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.mapError
 import com.github.michaelbull.result.onFailure
 import kotlinx.serialization.StringFormat
@@ -102,7 +102,7 @@ sealed class RuleContext(
      * if it does not already exist, and returns a result.
      */
     fun createFile(
-        bytesCallback: suspend () -> Result<ByteArray, ActionError>?,
+        bytesCallback: suspend () -> Result<ByteArray, ActionError>,
         path: String,
         vararg subpath: String
     ): RuleResult
@@ -117,8 +117,7 @@ sealed class RuleContext(
 
             if (outputPath.exists()) return@FileAction outputPath to null
 
-            val result = bytesCallback.invoke() ?: return@FileAction outputPath to DownloadFailed(outputPath)
-            val bytes = result.get() ?: return@FileAction outputPath to DownloadFailed(outputPath, cause = result.getError())
+            val bytes = bytesCallback().getOrElse { return@FileAction outputPath to DownloadFailed(outputPath, cause = it) }
 
             outputPath.tryToResult { createParentDirectories() }
                 .onFailure { error ->
@@ -150,7 +149,7 @@ sealed class RuleContext(
         suspend fun exportAsOverride(
             force: Boolean = false,
             onExport: suspend (
-                bytesCallback: suspend () -> Result<ByteArray, ActionError>?,
+                bytesCallback: suspend () -> Result<ByteArray, ActionError>,
                 fileName: String,
                 overridesFolder: String
             ) -> RuleResult
@@ -253,7 +252,7 @@ sealed class RuleContext(
         suspend fun exportAsOverrideFrom(
             provider: Provider,
             onExport: suspend (
-                bytesCallback: suspend () -> Result<ByteArray, ActionError>?,
+                bytesCallback: suspend () -> Result<ByteArray, ActionError>,
                 fileName: String,
                 overridesDir: String
             ) -> RuleResult
@@ -280,7 +279,7 @@ sealed class RuleContext(
             force: Boolean = false,
             excludedProviders: Set<Provider> = setOf(),
             onExport: suspend (
-                bytesCallback: suspend () -> Result<ByteArray, ActionError>?,
+                bytesCallback: suspend () -> Result<ByteArray, ActionError>,
                 fileName: String,
                 overridesFolder: String
             ) -> RuleResult

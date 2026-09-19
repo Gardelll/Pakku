@@ -79,7 +79,7 @@ class ExportContentTest : PakkuTest(debug = false)
 
     @Test
     fun `file without URL is reported`(): Unit = runBlocking {
-        val result = resolveExportContent(projectFile("no-url.jar"), localPath = null) { null }
+        val result = resolveExportContent(projectFile("no-url.jar").copy(url = null), localPath = null)
 
         assertIs<NoUrl>(result.getError())
     }

@@ -10,8 +10,8 @@ import teksturepako.pakku.api.actions.errors.*
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.data.workingPath
+import teksturepako.pakku.api.http.downloadUrl
 import teksturepako.pakku.api.http.requestByteArray
-import teksturepako.pakku.api.http.requireHttpsWhenUnverifiable
 import teksturepako.pakku.api.overrides.OverrideType
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.ProjectFile
@@ -83,14 +83,7 @@ suspend fun List<ProjectFile>.fetch(
                     return@launch
                 }
 
-                val url = projectFile.url
-                if (url == null)
-                {
-                    fail(projectFile, NoUrl(projectFile))
-                    return@launch
-                }
-
-                requireHttpsWhenUnverifiable(url, projectFile.hashes)?.let { error ->
+                val url = projectFile.downloadUrl().getOrElse { error ->
                     fail(projectFile, error)
                     return@launch
                 }

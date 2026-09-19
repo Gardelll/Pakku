@@ -21,7 +21,9 @@ import kotlinx.coroutines.sync.withPermit
 import teksturepako.pakku.api.PakkuApi
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.FileNotFound
+import teksturepako.pakku.api.actions.errors.NoUrl
 import teksturepako.pakku.api.actions.errors.ProjNotFound
+import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.debug
 import teksturepako.pakku.toPrettyString
 import kotlin.math.pow
@@ -165,8 +167,7 @@ internal suspend fun <T> retryTransient(
  * A download which fails for a temporary reason is retried after a delay;
  * see [retryTransient] and [PakkuApi.Configuration.withMaxDownloadRetries].
  *
- * Callers that cannot verify content hashes should reject non-HTTPS URLs before calling this
- * (see [requireHttpsWhenUnverifiable]).
+ * Project files should be downloaded from their [downloadUrl], which refuses URLs whose content cannot be trusted.
  */
 suspend fun requestByteArray(
     url: String,
@@ -183,14 +184,16 @@ suspend fun requestByteArray(
 }
 
 /**
- * When [hashes] are missing, non-HTTPS URLs are refused because integrity cannot be checked.
- * When hashes are present, HTTP is allowed (content will be verified after download).
+ * @return The URL to download this file from, or [NoUrl] if it has none.
+ *
+ * Without hashes, the downloaded content cannot be verified, so a non-HTTPS URL is refused as [InsecureUrl].
+ * With hashes, HTTP is allowed, since the content is checked against them after the download.
  */
-fun requireHttpsWhenUnverifiable(url: String, hashes: Map<String, String>?): ActionError?
+fun ProjectFile.downloadUrl(): Result<String, ActionError>
 {
-    if (!hashes.isNullOrEmpty()) return null
-    if (url.startsWith("https://", ignoreCase = true)) return null
-    return InsecureUrl(url)
+    val url = url ?: return Err(NoUrl(this))
+    if (hashes.isNullOrEmpty() && !url.startsWith("https://", ignoreCase = true)) return Err(InsecureUrl(url))
+    return Ok(url)
 }
 
 /**

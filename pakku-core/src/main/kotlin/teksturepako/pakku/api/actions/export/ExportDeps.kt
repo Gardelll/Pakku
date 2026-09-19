@@ -3,14 +3,14 @@ package teksturepako.pakku.api.actions.export
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.andThen
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getOrElse
 import com.github.michaelbull.result.runCatching
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.HashMismatch
-import teksturepako.pakku.api.actions.errors.NoUrl
+import teksturepako.pakku.api.http.downloadUrl
 import teksturepako.pakku.api.http.requestByteArray
-import teksturepako.pakku.api.http.requireHttpsWhenUnverifiable
 import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.io.tryOrNull
 import java.nio.file.Path
@@ -24,7 +24,7 @@ data class ExportDeps(
      * Resolves the content of a project file.
      * `localPath` is where `pakku fetch` stores the file, or `null` if it cannot be determined.
      */
-    val resolveContent: suspend (file: ProjectFile, localPath: Path?) -> Result<ByteArray, ActionError>?,
+    val resolveContent: suspend (file: ProjectFile, localPath: Path?) -> Result<ByteArray, ActionError>,
 )
 
 fun defaultExportDeps() = ExportDeps(
@@ -40,23 +40,19 @@ fun defaultExportDeps() = ExportDeps(
 suspend fun resolveExportContent(
     file: ProjectFile,
     localPath: Path?,
-    resolveRemote: suspend (ProjectFile) -> Result<ByteArray, ActionError>? = ::resolveExportContentFromRemote,
+    resolveRemote: suspend (ProjectFile) -> Result<ByteArray, ActionError> = ::resolveExportContentFromRemote,
 ): Result<ByteArray, ActionError>
 {
     localPath?.let { file.readVerifiedLocalContent(it) }?.let { return Ok(it) }
 
-    val bytes = resolveRemote(file)?.getOrElse { return Err(it) } ?: return Err(NoUrl(file))
+    val bytes = resolveRemote(file).getOrElse { return Err(it) }
 
     val mismatch = runCatching { file.checkIntegrity(bytes, Path(file.fileName)) }.get()
     return if (mismatch is HashMismatch) Err(mismatch) else Ok(bytes)
 }
 
-suspend fun resolveExportContentFromRemote(file: ProjectFile): Result<ByteArray, ActionError>?
-{
-    val url = file.url ?: return null
-    requireHttpsWhenUnverifiable(url, file.hashes)?.let { return Err(it) }
-    return requestByteArray(url)
-}
+suspend fun resolveExportContentFromRemote(file: ProjectFile): Result<ByteArray, ActionError> =
+    file.downloadUrl().andThen { requestByteArray(it) }
 
 /** Returns the content at [path] only if it matches all hashes of this file. */
 private suspend fun ProjectFile.readVerifiedLocalContent(path: Path): ByteArray?

@@ -6,7 +6,7 @@ import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.ProjNotFound
 import teksturepako.pakku.api.http.RequestError
 import teksturepako.pakku.api.http.requestByteArray
-import teksturepako.pakku.api.http.requireHttpsWhenUnverifiable
+import teksturepako.pakku.api.http.downloadUrl
 import teksturepako.pakku.api.platforms.Multiplatform.requestProject
 import teksturepako.pakku.api.projects.Project
 import teksturepako.pakku.api.projects.ProjectType
@@ -165,11 +165,7 @@ object Multiplatform : Provider
                 val mrFile = Modrinth.requestProjectFiles(mcVersions, loaders, project.id[Modrinth.serialName]!!, fileId, projectType)
                     .get()?.firstOrNull()
 
-                val bytes = mrFile?.let { file ->
-                    val url = file.url ?: return@let null
-                    if (requireHttpsWhenUnverifiable(url, file.hashes) != null) return@let null
-                    requestByteArray(url).get()
-                }
+                val bytes = mrFile?.downloadUrl()?.get()?.let { requestByteArray(it).get() }
 
                 if (bytes != null)
                 {

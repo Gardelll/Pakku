@@ -7,6 +7,7 @@ import com.github.michaelbull.result.flatMap
 import com.github.michaelbull.result.map
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.FileNotFound
+import teksturepako.pakku.api.projects.Project
 import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.io.path.exists
@@ -45,4 +46,14 @@ suspend fun LockFile.withForkParent(): Result<LockFile, ActionError>
         LockFile.readToResultFrom(path, inheritConfig = false)
             .map { it.mergedWithLocal(this, configFile) }
     }
+}
+
+/**
+ * Adds or updates [project] in this local lock file and in [effectiveLockFile], the lock file
+ * [withForkParent] returned for it, so that later lookups during the same command see the project.
+ */
+fun LockFile.addOrUpdateWith(effectiveLockFile: LockFile, project: Project)
+{
+    addOrUpdate(project)
+    if (effectiveLockFile !== this) effectiveLockFile.addOrUpdate(project)
 }

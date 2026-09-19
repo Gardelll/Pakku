@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.actions.createAdditionRequest
 import teksturepako.pakku.api.actions.errors.NotFoundOn
 import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakku.api.data.addOrUpdateWith
 import teksturepako.pakku.api.data.withForkParent
 import teksturepako.pakku.api.platforms.CurseForge
 import teksturepako.pakku.api.platforms.GitHub
@@ -134,8 +135,7 @@ class Add : CliktCommand()
 
                     if (terminal.ynPrompt(promptMessage.first, isRecommended))
                     {
-                        lockFile.addOrUpdate(project)
-                        if (effectiveLockFile !== lockFile) effectiveLockFile.addOrUpdate(project)
+                        lockFile.addOrUpdateWith(effectiveLockFile, project)
                         lockFile.linkProjectToDependents(project)
 
                         if (!noDepsFlag)

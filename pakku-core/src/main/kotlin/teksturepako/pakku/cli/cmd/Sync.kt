@@ -21,6 +21,7 @@ import teksturepako.pakku.api.actions.createRemovalRequest
 import teksturepako.pakku.api.actions.sync.syncProjects
 import teksturepako.pakku.api.data.ConfigFile
 import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakku.api.data.addOrUpdateWith
 import teksturepako.pakku.api.data.withForkParent
 import teksturepako.pakku.api.overrides.readManualOverrides
 import teksturepako.pakku.api.platforms.CurseForge
@@ -126,8 +127,7 @@ class Sync : CliktCommand()
 
                         if (terminal.ynPrompt(promptMessage.first, isRecommended))
                         {
-                            lockFile.addOrUpdate(project)
-                            if (effectiveLockFile !== lockFile) effectiveLockFile.addOrUpdate(project)
+                            lockFile.addOrUpdateWith(effectiveLockFile, project)
                             lockFile.linkProjectToDependents(project)
 
                             terminal.pSuccess(promptMessage.second)

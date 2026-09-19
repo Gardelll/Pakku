@@ -7,6 +7,7 @@ import teksturepako.pakku.api.actions.RequestHandlers
 import teksturepako.pakku.api.actions.createAdditionRequest
 import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakku.api.data.addOrUpdateWith
 import teksturepako.pakku.api.platforms.Platform
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
@@ -63,8 +64,7 @@ suspend fun Project.resolveDependencies(
                                 )) return@createAdditionRequest
 
                             // Add dependency
-                            lockFile.addOrUpdate(dependency)
-                            if (effectiveLockFile !== lockFile) effectiveLockFile.addOrUpdate(dependency)
+                            lockFile.addOrUpdateWith(effectiveLockFile, dependency)
 
                             // Link dependency to parent project
                             lockFile.addPakkuLink(dependency.pakkuId!!, this@resolveDependencies)

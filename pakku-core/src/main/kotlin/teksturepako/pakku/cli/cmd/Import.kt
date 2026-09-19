@@ -15,6 +15,7 @@ import teksturepako.pakku.api.actions.createAdditionRequest
 import teksturepako.pakku.api.actions.errors.AlreadyAdded
 import teksturepako.pakku.api.actions.import.importModpackModel
 import teksturepako.pakku.api.data.LockFile
+import teksturepako.pakku.api.data.addOrUpdateWith
 import teksturepako.pakku.api.data.withForkParent
 import teksturepako.pakku.api.platforms.CurseForge
 import teksturepako.pakku.api.platforms.Platform
@@ -96,8 +97,7 @@ class Import : CliktCommand()
                         if (replacing != null && !terminal.ynPrompt(promptMessage.first, isRecommended))
                             return@createAdditionRequest
 
-                        lockFile.addOrUpdate(project)
-                        if (effectiveLockFile !== lockFile) effectiveLockFile.addOrUpdate(project)
+                        lockFile.addOrUpdateWith(effectiveLockFile, project)
                         lockFile.linkProjectToDependents(project)
 
                         if (depsFlag)

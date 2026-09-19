@@ -2,14 +2,22 @@ package teksturepako.pakku.api.http
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
+import teksturepako.pakku.api.actions.errors.ActionError
 import teksturepako.pakku.api.actions.errors.FileNotFound
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 class RetryTest
 {
@@ -75,5 +83,26 @@ class RetryTest
         }
 
         assertEquals(listOf(1, 2), reported)
+    }
+
+    @Test
+    fun `a cancelled request is neither retried nor reported as failed`() = runTest {
+        var attempts = 0
+        val reported = mutableListOf<Int>()
+        var result: Result<String, ActionError>? = null
+
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            result = retryTransient(maxRetries = 2, onRetry = { retryNumber, _ -> reported += retryNumber }) {
+                tryRequest<String> {
+                    attempts++
+                    awaitCancellation()
+                }
+            }
+        }
+        job.cancelAndJoin()
+
+        assertEquals(1, attempts)
+        assertEquals(emptyList(), reported)
+        assertNull(result)
     }
 }

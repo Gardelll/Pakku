@@ -12,6 +12,8 @@ import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import teksturepako.pakku.api.PakkuApi
@@ -58,6 +60,9 @@ suspend inline fun <reified T> tryRequest(block: () -> HttpResponse): Result<T, 
     }
     catch (e: Exception)
     {
+        // Reported as a connection error, the cancellation of the caller would be swallowed and retried.
+        currentCoroutineContext().ensureActive()
+
         debug { e.printStackTrace() }
         Err(ConnectionError(e))
     }

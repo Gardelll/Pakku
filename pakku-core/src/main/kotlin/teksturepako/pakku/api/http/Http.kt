@@ -12,7 +12,9 @@ import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.util.date.*
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -22,6 +24,12 @@ import teksturepako.pakku.api.actions.errors.FileNotFound
 import teksturepako.pakku.api.actions.errors.ProjNotFound
 import teksturepako.pakku.debug
 import teksturepako.pakku.toPrettyString
+import kotlin.math.pow
+import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class RequestError(val response: HttpResponse, val body: String? = null) : ActionError()
 {
@@ -79,9 +87,54 @@ private fun ActionError.isTransient(): Boolean = when (this)
     else               -> false
 }
 
+/** How long the first retry waits at most; each further retry may wait twice as long as the previous one. */
+private val INITIAL_RETRY_DELAY = 1.seconds
+
+/** The longest a request waits before it is retried. */
+internal val MAX_RETRY_DELAY = 1.minutes
+
+/**
+ * An exponentially growing delay before retry number [retryNumber], capped at [MAX_RETRY_DELAY].
+ * It is randomised within its upper half, so that requests which failed together are not retried together.
+ */
+internal fun backoffDelay(retryNumber: Int, random: Random = Random.Default): Duration =
+    (INITIAL_RETRY_DELAY * 2.0.pow(retryNumber - 1)).coerceAtMost(MAX_RETRY_DELAY) * random.nextDouble(0.5, 1.0)
+
+/**
+ * Parses the [value] of a `Retry-After` header, which is either a number of seconds or an HTTP date.
+ * @return How long to wait from [nowMillis] on, or `null` if [value] is invalid.
+ */
+internal fun parseRetryAfter(value: String, nowMillis: Long = getTimeMillis()): Duration?
+{
+    value.trim().toLongOrNull()?.let { seconds -> return if (seconds >= 0) seconds.seconds else null }
+
+    val date = runCatching { value.fromHttpToGmtDate() }.getOrNull() ?: return null
+    return (date.timestamp - nowMillis).milliseconds.coerceAtLeast(Duration.ZERO)
+}
+
+/**
+ * How long to wait before retry number [retryNumber] of a request which failed with this error,
+ * or `null` if it should not be retried.
+ */
+internal fun ActionError.retryDelay(retryNumber: Int): Duration?
+{
+    if (!isTransient()) return null
+
+    val backoff = backoffDelay(retryNumber)
+    val requested = (this as? RequestError)?.response?.headers?.get(HttpHeaders.RetryAfter)
+        ?.let { parseRetryAfter(it) }
+        ?: return backoff
+
+    // Retrying sooner than the server asks would fail again, and waiting longer would stall the command.
+    return if (requested > MAX_RETRY_DELAY) null else maxOf(backoff, requested)
+}
+
 /**
  * Runs [request], repeating it while it fails for a reason which may resolve itself,
- * at most [maxRetries] times. [onRetry] is called before each new attempt.
+ * at most [maxRetries] times. [onRetry] is called before waiting for each new attempt.
+ *
+ * Each retry waits as long as the server asks for in a `Retry-After` header,
+ * but at least an exponentially growing delay; see [retryDelay].
  */
 internal suspend fun <T> retryTransient(
     maxRetries: Int,
@@ -96,10 +149,12 @@ internal suspend fun <T> retryTransient(
         val result = request()
         val error = result.getError() ?: return result
 
-        if (!error.isTransient() || retryNumber >= maxRetries) return result
+        if (retryNumber >= maxRetries) return result
+        val wait = error.retryDelay(retryNumber + 1) ?: return result
 
         retryNumber++
         onRetry(retryNumber, error)
+        delay(wait)
     }
 }
 
@@ -107,8 +162,8 @@ internal suspend fun <T> retryTransient(
  * @return A body [ByteArray] of an HTTP(S) request, or an error if the status code is not OK.
  * A missing file is reported as [FileNotFound].
  *
- * A download which fails for a temporary reason is retried;
- * see [PakkuApi.Configuration.withMaxDownloadRetries].
+ * A download which fails for a temporary reason is retried after a delay;
+ * see [retryTransient] and [PakkuApi.Configuration.withMaxDownloadRetries].
  *
  * Callers that cannot verify content hashes should reject non-HTTPS URLs before calling this
  * (see [requireHttpsWhenUnverifiable]).

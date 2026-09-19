@@ -1,8 +1,6 @@
 package teksturepako.pakku.cli.cmd
 
 import com.github.ajalt.clikt.core.*
-import com.github.ajalt.clikt.parameters.options.flag
-import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.animation.progress.MultiProgressBarAnimation
 import com.github.ajalt.mordant.animation.progress.ProgressTask
@@ -31,7 +29,6 @@ import teksturepako.pakku.api.overrides.OverrideType
 import teksturepako.pakku.api.overrides.readManualOverridesFrom
 import teksturepako.pakku.api.platforms.Platform
 import teksturepako.pakku.api.platforms.Provider
-import teksturepako.pakku.cli.arg.ynPrompt
 import teksturepako.pakku.cli.ui.*
 import kotlin.io.path.Path
 import kotlin.io.path.pathString

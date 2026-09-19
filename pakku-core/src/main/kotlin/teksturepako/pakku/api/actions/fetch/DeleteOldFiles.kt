@@ -1,6 +1,5 @@
 package teksturepako.pakku.api.actions.fetch
 
-import com.github.michaelbull.result.get
 import com.github.michaelbull.result.onFailure
 import com.github.michaelbull.result.onSuccess
 import kotlinx.coroutines.*
@@ -48,20 +47,14 @@ suspend fun deleteOldFiles(
         //TODO: refactor, just ignores manual overrides for now, and resyncs them
         detectProjects(onError, lockFile, configFile, platforms, setOf())
             .flatMap { project -> project.files }
-            .map { projectFile ->
-                async x@ {
-                    val parentProject = projectFile.getParentProject(lockFile) ?: return@x null
+            .mapAsyncNotNull(concurrency = FILE_IO_CONCURRENCY) x@{ projectFile ->
+                val parentProject = projectFile.getParentProject(lockFile) ?: return@x null
 
-                    val path = projectFile.getPath(parentProject, configFile) ?: return@x null
+                val path = projectFile.getPath(parentProject, configFile) ?: return@x null
 
-                    readPathBytesToResult(path).get()?.let { path to it }
-                }
+                path.readAndCreateSha1FromBytes()?.let { path.absolute() to it }
             }
-            .awaitAll()
-            .filterNotNull()
-            .associate { (path, bytes) ->
-                path.absolute() to createHash("sha1", bytes)
-            }
+            .toMap()
     }
 
     val fileHashes = async {

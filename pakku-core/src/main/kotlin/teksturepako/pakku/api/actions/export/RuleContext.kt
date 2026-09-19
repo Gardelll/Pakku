@@ -3,7 +3,6 @@ package teksturepako.pakku.api.actions.export
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
 import com.github.michaelbull.result.getOrElse
-import com.github.michaelbull.result.mapError
 import com.github.michaelbull.result.onFailure
 import kotlinx.serialization.StringFormat
 import kotlinx.serialization.encodeToString
@@ -18,12 +17,24 @@ import teksturepako.pakku.api.overrides.OverrideType
 import teksturepako.pakku.api.overrides.OverrideSource
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.api.projects.Project
+import teksturepako.pakku.api.projects.ProjectFile
 import teksturepako.pakku.io.copyFileTo
 import teksturepako.pakku.io.copyRecursivelyTo
 import teksturepako.pakku.io.IllegalPath
 import teksturepako.pakku.io.isWithinBounds
 import teksturepako.pakku.io.tryToResult
+import java.nio.file.Path
 import kotlin.io.path.*
+
+/** Writes this file with [write] after creating its parent directories. */
+@PublishedApi
+internal suspend fun Path.writeCreatingParents(write: Path.() -> Unit): ActionError?
+{
+    tryToResult { createParentDirectories() }
+        .onFailure { error -> if (error !is AlreadyExists) return error }
+
+    return tryToResult { write() }.getError()
+}
 
 /**
  * Rule Context keeps track of currently exporting content.
@@ -53,21 +64,9 @@ sealed class RuleContext(
     ): RuleResult
     {
         val outputPath = getPath(path, *subpath)
-        val exportRoot = getPath()
 
-        return ruleResult("createJsonFile '$outputPath'", Packaging.FileAction(outputPath) {
-            if (!outputPath.isWithinBounds(exportRoot))
-            {
-                return@FileAction outputPath to IllegalPath(outputPath.pathString)
-            }
-
-            outputPath.tryToResult { createParentDirectories() }
-                .onFailure { error ->
-                    if (error !is AlreadyExists) return@FileAction outputPath to error
-                }
-
-            outputPath to outputPath.tryToResult { writeText(format.encodeToString(value)) }
-                .getError()
+        return ruleResult("createJsonFile '$outputPath'", fileActionWithinExport(outputPath) {
+            outputPath.writeCreatingParents { writeText(format.encodeToString(value)) }
         })
     }
 
@@ -77,23 +76,8 @@ sealed class RuleContext(
     {
         val outputPath = getPath(path, *subpath)
 
-        return ruleResult("createFile '$outputPath'", Packaging.FileAction(outputPath) {
-            if (!outputPath.isWithinBounds(getPath()))
-            {
-                return@FileAction outputPath to IllegalPath(outputPath.pathString)
-            }
-
-            outputPath.tryToResult { createParentDirectories() }
-                .onFailure { error ->
-                    if (error !is AlreadyExists) return@FileAction outputPath to error
-                }
-
-            outputPath to outputPath.tryToResult { writeBytes(bytes) }
-                .mapError { error ->
-                    if (error !is AlreadyExists) error else null
-                }
-                .getError()
-
+        return ruleResult("createFile '$outputPath'", fileActionWithinExport(outputPath) {
+            outputPath.writeCreatingParents { writeBytes(bytes) }
         })
     }
 
@@ -109,28 +93,25 @@ sealed class RuleContext(
     {
         val outputPath = getPath(path, *subpath)
 
-        return ruleResult("createFile '$outputPath'", Packaging.FileAction(outputPath) {
-            if (!outputPath.isWithinBounds(getPath()))
-            {
-                return@FileAction outputPath to IllegalPath(outputPath.pathString)
-            }
+        return ruleResult("createFile '$outputPath'", fileActionWithinExport(outputPath) {
+            if (outputPath.exists()) return@fileActionWithinExport null
 
-            if (outputPath.exists()) return@FileAction outputPath to null
+            val bytes = bytesCallback().getOrElse { return@fileActionWithinExport DownloadFailed(outputPath, cause = it) }
 
-            val bytes = bytesCallback().getOrElse { return@FileAction outputPath to DownloadFailed(outputPath, cause = it) }
-
-            outputPath.tryToResult { createParentDirectories() }
-                .onFailure { error ->
-                    if (error !is AlreadyExists) return@FileAction outputPath to error
-                }
-
-            outputPath to outputPath.tryToResult { writeBytes(bytes) }
-                .mapError { error ->
-                    if (error !is AlreadyExists) error else null
-                }
-                .getError()
+            outputPath.writeCreatingParents { writeBytes(bytes) }
         })
     }
+
+    /** A [file action][Packaging.FileAction] which refuses to write outside of this context's export directory. */
+    @PublishedApi
+    internal fun fileActionWithinExport(outputPath: Path, action: suspend () -> ActionError?) =
+        Packaging.FileAction(outputPath) {
+            outputPath to if (outputPath.isWithinBounds(getPath())) action() else IllegalPath(outputPath.pathString)
+        }
+
+    /** Resolves the content of [projectFile], reusing the copy `pakku fetch` saved for [project] if it is intact. */
+    protected fun contentOf(project: Project, projectFile: ProjectFile): suspend () -> Result<ByteArray, ActionError> =
+        { deps.resolveContent(projectFile, projectFile.getPath(project, configFile)) }
 
     /** Rule context representing a [project][Project]. */
     data class ExportingProject(
@@ -160,7 +141,7 @@ sealed class RuleContext(
             val projectFile = project.getLatestFile(Provider.providers) ?: return error(NoFiles(project, lockFile))
 
             val result = onExport(
-                { deps.resolveContent(projectFile, projectFile.getPath(project, configFile)) },
+                contentOf(project, projectFile),
                 projectFile.fileName,
                 OverrideType.fromProject(project).folderName
             )
@@ -264,7 +245,7 @@ sealed class RuleContext(
                 ?: return error(NoFilesOn(project, provider))
 
             val result = onExport(
-                { deps.resolveContent(projectFile, projectFile.getPath(project, configFile)) },
+                contentOf(project, projectFile),
                 projectFile.fileName,
                 OverrideType.fromProject(project).folderName
             )
@@ -291,7 +272,7 @@ sealed class RuleContext(
                 ?: return error(NoFiles(project, lockFile))
 
             val result = onExport(
-                { deps.resolveContent(projectFile, projectFile.getPath(project, configFile)) },
+                contentOf(project, projectFile),
                 projectFile.fileName,
                 OverrideType.fromProject(project).folderName
             )

@@ -310,15 +310,18 @@ suspend fun List<ExportRule>.produceRuleResults(
     manualOverrides: Collection<ManualOverride>? = null,
 ): List<RuleResult> = coroutineScope {
 
+    val overrideSources = parentOverrides?.awaitAll().orEmpty() + overrides.awaitAll()
+    val projectOverrides = manualOverrides ?: readManualOverrides(configFile)
+
     val results = this@produceRuleResults.fold(listOf<Pair<ExportRule, RuleContext>>()) { acc, rule ->
         acc + lockFile.getAllProjects().mapNotNull { project ->
             // Projects
             if (project.export == false) return@mapNotNull null
             rule to RuleContext.ExportingProject(project, lockFile, configFile, workingSubDir, noServer, deps)
-        } + (parentOverrides?.awaitAll().orEmpty() + overrides.awaitAll()).map { source ->
+        } + overrideSources.map { source ->
             // Overrides
             rule to RuleContext.ExportingOverride(source, lockFile, configFile, workingSubDir, noServer, deps)
-        } + (manualOverrides ?: readManualOverrides(configFile)).map { projectOverride ->
+        } + projectOverrides.map { projectOverride ->
             // Manual overrides
             rule to RuleContext.ExportingManualOverride(projectOverride, lockFile, configFile, workingSubDir, noServer, deps)
         }

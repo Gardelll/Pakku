@@ -86,40 +86,6 @@ private fun FetchCommand.setProgressMonitorIfPossible(progressMonitor: ProgressM
 private fun ResetCommand.setProgressMonitorIfPossible(progressMonitor: ProgressMonitor?): ResetCommand =
     if (progressMonitor == null) this else this.setProgressMonitor(progressMonitor)
 
-suspend fun gitFetchCheckout(
-    dir: Path,
-    ref: String,
-    onProgress: (taskName: String?, percentDone: Int) -> Unit,
-): ActionError? = coroutineScope {
-    val (progressMonitor, outputStream, writer) = pakkuGitProgressMonitor { taskName, percentDone ->
-        onProgress(taskName, percentDone)
-    }
-
-    val git = try
-    {
-        val git = Git.open(dir.toFile())
-        git.clean().setForce(true).call()
-        git.fetch().setProgressMonitorIfPossible(progressMonitor).call()
-        git.checkout().setProgressMonitorIfPossible(progressMonitor).setName(ref).call()
-        git
-    }
-    catch (e: Exception)
-    {
-        debug { e.printStackTrace() }
-        return@coroutineScope GitUpdateError(dir)
-    }
-    finally
-    {
-        withContext(Dispatchers.IO) {
-            writer.close()
-            outputStream.close()
-        }
-    }
-
-    launch { git.close() }.join()
-    return@coroutineScope null
-}
-
 fun gitRemoteUrl(dir: Path, remoteName: String = "origin"): String? =
     runCatching { Git.open(dir.toFile()).use { git -> git.repository.config.getString("remote", remoteName, "url") } }
         .getOrNull()

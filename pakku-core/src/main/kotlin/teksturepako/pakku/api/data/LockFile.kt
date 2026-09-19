@@ -309,10 +309,6 @@ data class LockFile(
             decodeOrNew<LockFile>(LockFile(), "$workingPath/$FILE_NAME")
                 .onSuccess { it.inheritConfig(ConfigFile.readOrNull()) }
 
-        /** Reads a lock file without applying local config inheritance. */
-        fun readOrNewFrom(path: Path): Result<LockFile, ActionError> =
-            decodeOrNew<LockFile>(LockFile(), path.toString())
-
         /** Reads [LockFile] and parses it to a [Result]. */
         suspend fun readToResult(): Result<LockFile, ActionError> =
             decodeToResult<LockFile>(Path("$workingPath/$FILE_NAME"))

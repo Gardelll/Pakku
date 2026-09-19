@@ -147,12 +147,6 @@ private class ForkInit : CliktCommand(name = "init")
             terminal.pDanger("Could not determine HEAD commit of parent repository")
             return@runBlocking
         }
-        if (!commit.matches(Regex("[0-9a-fA-F]{40}")))
-        {
-            cloneDir.deleteRecursively()
-            terminal.pDanger("Invalid HEAD commit of parent repository: $commit")
-            return@runBlocking
-        }
         config.parent = ConfigFile.ParentConfig(
             id = sourceUrl,
             version = commit.take(8),
@@ -215,11 +209,6 @@ private class ForkSync : CliktCommand(name = "sync")
 
         val commit = runCatching { gitHeadCommit(Dirs.parentDir) }.getOrElse {
             terminal.pDanger("Could not determine HEAD commit of parent repository")
-            return@runBlocking
-        }
-        if (!commit.matches(Regex("[0-9a-fA-F]{40}")))
-        {
-            terminal.pDanger("Invalid HEAD commit of parent repository: $commit")
             return@runBlocking
         }
         config.parent?.version = commit.take(8)
@@ -294,7 +283,7 @@ private class ForkPromote : CliktCommand(name = "promote")
             terminal.pDanger("Parent lock file not found. Run 'pakku fork sync' first.")
             return@runBlocking
         }
-        val parentLock = LockFile.readOrNewFrom(parentLockPath).getOrElse {
+        val parentLock = LockFile.readToResultFrom(parentLockPath, inheritConfig = false).getOrElse {
             terminal.pError(it)
             return@runBlocking
         }

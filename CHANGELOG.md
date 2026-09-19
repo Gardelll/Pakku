@@ -7,7 +7,7 @@
 
 - Downloads are now retried up to 2 times by default, only on connection errors and HTTP 5xx or 429 responses; `-r`/`--retry <n>`, now also on `pakku export`, sets the limit.
 - Retries back off exponentially, waiting a random delay of up to 1, 2, 4… seconds (at most a minute), or as long as the server asks in a `Retry-After` header if that is longer; a download the server asks to retry only after more than a minute is not retried.
-- `pakku fetch` and `pakku remote` now exit with code 1 when a project file cannot be downloaded, does not match its hashes or cannot be saved.
+- `pakku fetch`, `pakku remote` and `pakku remote update` now exit with code 1 when a project file is not saved, e.g. because it has no URL, its URL is not HTTPS while it has no hashes, its file name is illegal, it cannot be downloaded, it does not match its hashes or it cannot be written.
 - `pakku export` now reuses project files downloaded by `pakku fetch` when they match their hashes, and verifies the hashes of files it downloads.
 - At most 8 files are downloaded at the same time.
 

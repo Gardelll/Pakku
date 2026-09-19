@@ -248,7 +248,7 @@ suspend fun CliktCommand.remoteInstallImpl(args: Remote.Args) = coroutineScope {
 
     args.retryOpt?.let { pakku { withMaxDownloadRetries(it) } }
 
-    val fetchJob = projectFiles.fetch(
+    val failedFiles = projectFiles.fetch(
         onError = { error ->
             if (error !is AlreadyExists) terminal.pError(error)
         },
@@ -285,8 +285,6 @@ suspend fun CliktCommand.remoteInstallImpl(args: Remote.Args) = coroutineScope {
         )
     }
 
-    fetchJob.join()
-
     launch {
         delay(3.seconds)
         progressBar.update {
@@ -303,4 +301,6 @@ suspend fun CliktCommand.remoteInstallImpl(args: Remote.Args) = coroutineScope {
     syncJob.join()
 
     echo()
+
+    if (failedFiles.isNotEmpty()) throw ProgramResult(1)
 }

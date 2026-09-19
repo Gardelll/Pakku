@@ -183,7 +183,7 @@ suspend fun CliktCommand.remoteUpdateImpl(
 
     args.retryOpt?.let { pakku { withMaxDownloadRetries(it) } }
 
-    val fetchJob = projectFiles.fetch(
+    val failedFiles = projectFiles.fetch(
         onError = { error ->
             if (error !is AlreadyExists) terminal.pError(error)
         },
@@ -242,8 +242,6 @@ suspend fun CliktCommand.remoteUpdateImpl(
         )
     }
 
-    fetchJob.join()
-
     launch {
         delay(3.seconds)
         progressBar.update {
@@ -261,5 +259,7 @@ suspend fun CliktCommand.remoteUpdateImpl(
     oldFilesJob.join()
 
     echo()
+
+    if (failedFiles.isNotEmpty()) throw ProgramResult(1)
 }
 

@@ -21,5 +21,5 @@ remove old [project files](Pakku-Terminology.md#project-file) and
 copy manual overrides
 from the [Pakku directory](Pakku-Directory.md) to your modpack folder.
 
-If any project file cannot be downloaded, does not match its hashes or cannot be saved,
-the command exits with code `1`.
+If any missing project file cannot be saved to your modpack folder, e.g. because it has no URL,
+cannot be downloaded or does not match its hashes, the command exits with code `1`.

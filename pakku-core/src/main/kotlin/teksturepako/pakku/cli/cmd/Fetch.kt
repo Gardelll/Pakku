@@ -16,10 +16,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import teksturepako.pakku.api.actions.errors.AlreadyExists
-import teksturepako.pakku.api.actions.errors.CouldNotSave
-import teksturepako.pakku.api.actions.errors.DownloadFailed
-import teksturepako.pakku.api.actions.errors.ErrorSeverity
-import teksturepako.pakku.api.actions.errors.HashMismatch
 import teksturepako.pakku.api.actions.fetch.DeletionActionType
 import teksturepako.pakku.api.actions.fetch.deleteOldFiles
 import teksturepako.pakku.api.actions.fetch.fetch
@@ -33,8 +29,6 @@ import teksturepako.pakku.api.overrides.readManualOverrides
 import teksturepako.pakku.api.platforms.Platform
 import teksturepako.pakku.api.platforms.Provider
 import teksturepako.pakku.cli.ui.*
-import java.nio.file.Path
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
@@ -94,24 +88,8 @@ class Fetch : CliktCommand()
 
         launch { progressBar.execute() }
 
-        /** Files which failed to be fetched; a retry which succeeds removes its file again. */
-        val missingFiles: MutableSet<Path> = ConcurrentHashMap.newKeySet()
-        var fatal = false
-
-        val fetchJob = projectFiles.fetch(
+        val failedFiles = projectFiles.fetch(
             onError = { error ->
-                // An error naming a file leaves that file missing; a fatal error without one fails the command.
-                val failedPath = when (error)
-                {
-                    is DownloadFailed -> error.path
-                    is HashMismatch   -> error.path
-                    is CouldNotSave   -> error.path
-                    else              -> null
-                }
-
-                if (failedPath != null) missingFiles.add(failedPath)
-                else if (error.severity == ErrorSeverity.FATAL) fatal = true
-
                 if (error !is AlreadyExists) terminal.pError(error)
             },
             onProgress = { completed, total ->
@@ -121,8 +99,6 @@ class Fetch : CliktCommand()
                 }
             },
             onSuccess = { path, projectFile ->
-                missingFiles.remove(path)
-
                 val slug = projectFile.getParentProject(lockFile)?.getFullMsg()
 
                 terminal.pSuccess("$slug saved to $path")
@@ -167,8 +143,6 @@ class Fetch : CliktCommand()
             )
         }
 
-        fetchJob.join()
-
         launch {
             delay(3.seconds)
             runBlocking {
@@ -181,6 +155,6 @@ class Fetch : CliktCommand()
 
         echo()
 
-        if (fatal || missingFiles.isNotEmpty()) throw ProgramResult(1)
+        if (failedFiles.isNotEmpty()) throw ProgramResult(1)
     }
 }

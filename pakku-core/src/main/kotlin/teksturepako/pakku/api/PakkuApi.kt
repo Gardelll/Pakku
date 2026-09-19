@@ -86,7 +86,7 @@ object PakkuApi
     }
 
     private const val DEFAULT_MAX_CONCURRENT_DOWNLOADS = 8
-    private const val DEFAULT_MAX_DOWNLOAD_RETRIES = 2
+    internal const val DEFAULT_MAX_DOWNLOAD_RETRIES = 2
 
     private var configuration: Configuration? = null
 

@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.core.terminal
 import com.github.ajalt.clikt.parameters.options.*
-import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.widgets.progress.percentage
 import com.github.ajalt.mordant.widgets.progress.progressBar
@@ -28,6 +27,7 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.overrides.readManualOverrides
 import teksturepako.pakku.api.platforms.Platform
 import teksturepako.pakku.api.platforms.Provider
+import teksturepako.pakku.cli.arg.retryOption
 import teksturepako.pakku.cli.ui.*
 import kotlin.io.path.Path
 import kotlin.io.path.pathString
@@ -37,10 +37,7 @@ class Fetch : CliktCommand()
 {
     override fun help(context: Context) = "Download project files to your modpack folder"
 
-    private val retryOpt: Int? by option("-r", "--retry", metavar = "<n>")
-        .help("How many times to retry a download which failed for a temporary reason (Defaults to 2)")
-        .int()
-        .optionalValue(2)
+    private val retryOpt: Int? by retryOption()
 
     private val shelveFlag: Boolean by option("--shelve")
         .help("Moves unknown project files to a shelf instead of deleting them")

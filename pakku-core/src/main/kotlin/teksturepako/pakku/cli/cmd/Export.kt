@@ -9,8 +9,6 @@ import com.github.ajalt.clikt.parameters.options.deprecated
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.optionalValue
-import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.widgets.Spinner
 import com.github.ajalt.mordant.widgets.progress.progressBarLayout
@@ -33,6 +31,7 @@ import teksturepako.pakku.api.overrides.readManualOverridesFrom
 import teksturepako.pakku.api.platforms.CurseForge
 import teksturepako.pakku.api.platforms.Platform
 import teksturepako.pakku.cli.arg.promptForCurseForgeApiKey
+import teksturepako.pakku.cli.arg.retryOption
 import teksturepako.pakku.cli.ui.pDanger
 import teksturepako.pakku.cli.ui.pError
 import teksturepako.pakku.cli.ui.pSuccess
@@ -54,10 +53,7 @@ class Export : CliktCommand()
         .help("Export modpack without server content. Modrinth: exclude server-overrides and SERVER mods; ServerPack: skip export.")
         .flag()
 
-    private val retryOpt: Int? by option("-r", "--retry", metavar = "<n>")
-        .help("How many times to retry a download which failed for a temporary reason (Defaults to 2)")
-        .int()
-        .optionalValue(2)
+    private val retryOpt: Int? by retryOption()
 
     override fun run(): Unit = runBlocking {
         retryOpt?.let { pakku { withMaxDownloadRetries(it) } }

@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.help
 import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.*
-import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
 import com.github.ajalt.mordant.animation.progress.MultiProgressBarAnimation
 import com.github.ajalt.mordant.animation.progress.ProgressTask
@@ -33,6 +32,7 @@ import teksturepako.pakku.api.data.LockFile
 import teksturepako.pakku.api.overrides.OverrideType
 import teksturepako.pakku.api.overrides.readManualOverridesFrom
 import teksturepako.pakku.api.platforms.Provider
+import teksturepako.pakku.cli.arg.retryOption
 import teksturepako.pakku.cli.arg.ynPrompt
 import teksturepako.pakku.cli.ui.*
 import teksturepako.pakku.integration.git.gitStatus
@@ -51,10 +51,7 @@ class Remote : CliktCommand()
     private val branchOpt: String? by option("-b", "--branch", metavar = "<branch>")
         .help("Checkout <branch> instead of the remote's HEAD")
 
-    private val retryOpt: Int? by option("-r", "--retry", metavar = "<n>")
-        .help("How many times to retry a download which failed for a temporary reason (Defaults to 2)")
-        .int()
-        .optionalValue(2)
+    private val retryOpt: Int? by retryOption()
 
     private val serverPackFlag by option("-S", "--server-pack")
         .help("Install the server pack")

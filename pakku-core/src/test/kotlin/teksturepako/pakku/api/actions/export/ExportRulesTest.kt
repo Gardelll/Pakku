@@ -1,9 +1,6 @@
 package teksturepako.pakku.api.actions.export
 
-import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.get
-import io.mockk.coEvery
-import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import strikt.api.expectThat
@@ -37,10 +34,6 @@ import kotlin.test.assertNotNull
  */
 class ExportRulesTest : PakkuTest()
 {
-    private val exportDeps = mockk<ExportDeps> {
-        coEvery { resolveContent(any(), any()) } returns Ok(byteArrayOf(0x50, 0x4B, 0x03, 0x04))
-    }
-
     private val modpackName = "ExportRulesTestModpack"
     private val mcVersion = "1.20.1"
     private val fabricVersion = "0.15.0"
@@ -212,7 +205,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, CurseForge.serialName, CfModpackModel.MANIFEST)
@@ -256,7 +249,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, CurseForge.serialName, CfModpackModel.MANIFEST)
@@ -296,7 +289,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, CurseForge.serialName, CfModpackModel.MANIFEST)
@@ -334,7 +327,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, Modrinth.serialName, MrModpackModel.MANIFEST)
@@ -374,7 +367,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, Modrinth.serialName, MrModpackModel.MANIFEST)
@@ -415,7 +408,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, Modrinth.serialName, MrModpackModel.MANIFEST)
@@ -455,7 +448,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, Modrinth.serialName, MrModpackModel.MANIFEST)
@@ -519,7 +512,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, CurseForge.serialName, CfModpackModel.MANIFEST)
@@ -575,7 +568,7 @@ class ExportRulesTest : PakkuTest()
             onError = { _, _ -> },
             onSuccess = { _, _, _ -> },
             lockFile, configFile, platforms,
-            deps = exportDeps,
+            deps = stubExportDeps,
         )
 
         val manifestPath = Path(Dirs.cacheDir.pathString, Modrinth.serialName, MrModpackModel.MANIFEST)

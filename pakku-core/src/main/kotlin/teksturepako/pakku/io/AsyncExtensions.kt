@@ -9,11 +9,7 @@ import kotlinx.coroutines.sync.withPermit
 internal const val FILE_IO_CONCURRENCY = 8
 
 suspend inline fun <T, R> Iterable<T>.mapAsync(
-    crossinline transform: suspend (T) -> R
-): List<R> = mapAsync(Int.MAX_VALUE, transform)
-
-suspend inline fun <T, R> Iterable<T>.mapAsync(
-    concurrency: Int,
+    concurrency: Int = Int.MAX_VALUE,
     crossinline transform: suspend (T) -> R
 ): List<R> = coroutineScope {
     require(concurrency > 0) { "concurrency must be positive" }
@@ -29,10 +25,6 @@ suspend inline fun <T, R> Iterable<T>.mapAsync(
 }
 
 suspend inline fun <T, R : Any> Iterable<T>.mapAsyncNotNull(
-    crossinline transform: suspend (T) -> R?
-): List<R> = this.mapAsync(transform).filterNotNull()
-
-suspend inline fun <T, R : Any> Iterable<T>.mapAsyncNotNull(
-    concurrency: Int,
+    concurrency: Int = Int.MAX_VALUE,
     crossinline transform: suspend (T) -> R?
 ): List<R> = this.mapAsync(concurrency, transform).filterNotNull()
